@@ -107,7 +107,7 @@ __inline bool AStarProcessNode(room_type* Room)
             continue;
 
          // can't move from node to this candidate
-         if (!BSPCanMoveInRoom(Room, &Node->Location, &candidate->Location, false))
+         if (!BSPCanMoveInRoom(Room, &Node->Location, &candidate->Location, Room->Astar.ObjectID, false))
             continue;
 
          // cost for diagonal is sqrt(2), otherwise 1
@@ -231,7 +231,7 @@ void AStarGenerateGrid(room_type* Room)
    }
 }
 
-bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags)
+bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID)
 {
    // convert coordinates from ROO floatingpoint to
    // highres scale in integers
@@ -257,6 +257,7 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    // and set the LastNode to NULL
    Room->Astar.Open = startnode;
    Room->Astar.LastNode = NULL;
+   Room->Astar.ObjectID = ObjectID;
 
    // prepare non-persistent astar grid data memory
    ZeroMemory(Room->Astar.NodesData, Room->Astar.NodesDataSize);
