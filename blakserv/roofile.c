@@ -647,7 +647,7 @@ bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 /*********************************************************************************************/
 /* BSPCanMoveInRoom:  Checks if you can walk a straight line from (S)tart to (E)nd           */
 /*********************************************************************************************/
-bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E)
+bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, bool moveOutsideBSP)
 {
    if (!Room || Room->TreeNodesCount == 0 || !S || !E)
       return false;
@@ -662,7 +662,7 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E)
    }
 
    // first check against room geometry
-   bool roomok = BSPCanMoveInRoomTree(&Room->TreeNodes[0], S, E);
+   bool roomok = (moveOutsideBSP || BSPCanMoveInRoomTree(&Room->TreeNodes[0], S, E));
 
    // already found a collision in room
    if (!roomok)

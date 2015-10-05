@@ -107,7 +107,7 @@ __inline bool AStarProcessNode(room_type* Room)
             continue;
 
          // can't move from node to this candidate
-         if (!BSPCanMoveInRoom(Room, &Node->Location, &candidate->Location))
+         if (!BSPCanMoveInRoom(Room, &Node->Location, &candidate->Location, false))
             continue;
 
          // cost for diagonal is sqrt(2), otherwise 1
