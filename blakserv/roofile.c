@@ -964,8 +964,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
    bool moveOutsideBSP = ((*Flags & MSTATE_MOVE_OUTSIDE_BSP) == MSTATE_MOVE_OUTSIDE_BSP);
    
    // make we don't pass it back (ends in piState otherwise..)
-   if (moveOutsideBSP) 
-      *Flags &= ~MSTATE_MOVE_OUTSIDE_BSP;
+   *Flags &= ~MSTATE_MOVE_OUTSIDE_BSP;
    
    V2 se, stepend;
    V2SUB(&se, E, S);
