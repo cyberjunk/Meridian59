@@ -48,6 +48,7 @@ typedef struct astar
 } astar;
 
 void AStarGenerateGrid(room_type* Room);
+void AStarFreeGrid(room_type* Room);
 bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
 
 #endif /*#ifndef _ASTAR_H */

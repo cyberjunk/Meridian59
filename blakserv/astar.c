@@ -231,6 +231,19 @@ void AStarGenerateGrid(room_type* Room)
    }
 }
 
+void AStarFreeGrid(room_type* Room)
+{
+   // free workdata mem
+   FreeMemory(MALLOC_ID_ASTAR, Room->Astar.NodesData, Room->Astar.NodesDataSize);
+
+   // free each row mem
+   for (int i = 0; i < Room->rowshighres; i++)	
+      FreeMemory(MALLOC_ID_ASTAR, Room->Astar.Grid[i], Room->colshighres * sizeof(astar_node));
+	
+   // free rowsmem
+   FreeMemory(MALLOC_ID_ASTAR, Room->Astar.Grid, Room->rowshighres * sizeof(astar_node*));
+}
+
 bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID)
 {
    // convert coordinates from ROO floatingpoint to
