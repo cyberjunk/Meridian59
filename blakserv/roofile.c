@@ -647,7 +647,7 @@ bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 /*********************************************************************************************/
 /* BSPCanMoveInRoom:  Checks if you can walk a straight line from (S)tart to (E)nd           */
 /*********************************************************************************************/
-bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP)
+bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, bool SkipBlockers)
 {
    if (!Room || Room->TreeNodesCount == 0 || !S || !E)
       return false;
@@ -667,6 +667,10 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
    // already found a collision in room
    if (!roomok)
       return false;
+
+   // we're done if no need to check object blockers
+   if (SkipBlockers)
+      return true;
 
    // otherwise also check against blockers
    Blocker* blocker = Room->Blocker;
@@ -993,7 +997,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
    // 1) first try if direct move is possible from S to E
    /****************************************************/
 
-   if (BSPCanMoveInRoom(Room, S, E, ObjectID, moveOutsideBSP))
+   if (BSPCanMoveInRoom(Room, S, E, ObjectID, moveOutsideBSP, false))
    {
 	   V2ADD(&stepend, S, &se);
 	   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
@@ -1023,7 +1027,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 	   V2ADD(&stepend, S, &se);
 	   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 	   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-	   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+	   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 	   {
 		   *P = stepend;
 		   *Flags &= ~ESTATE_AVOIDING;
@@ -1056,7 +1060,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1069,7 +1073,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1082,7 +1086,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1095,7 +1099,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1108,7 +1112,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1121,7 +1125,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1143,7 +1147,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1156,7 +1160,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1169,7 +1173,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1182,7 +1186,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1195,7 +1199,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;
@@ -1208,7 +1212,7 @@ bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags
 			   V2ADD(&stepend, S, &v);
 			   stepend.X = ROUNDROOTOKODFINENESS(stepend.X);
 			   stepend.Y = ROUNDROOTOKODFINENESS(stepend.Y);
-			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP))
+			   if (BSPCanMoveInRoom(Room, S, &stepend, ObjectID, moveOutsideBSP, false))
 			   {
 				   *P = stepend;
 				   *Flags |= ESTATE_AVOIDING;

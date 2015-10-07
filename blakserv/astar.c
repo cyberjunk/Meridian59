@@ -67,6 +67,44 @@ __inline void AStarOpenListRemove(room_type* Room, astar_node* Node)
    }
 }
 
+__inline void AStarAddBlockers(room_type *Room, int ObjectID)
+{
+   Blocker* b;
+	
+   b = Room->Blocker;
+   while (b)
+   {
+      // Don't add self.
+      if (b->ObjectID == ObjectID)
+      {
+         b = b->Next;
+         continue;
+      }
+
+      // Get blocker coords
+      int row = (int)roundf(b->Position.Y / 256.0f);
+      int col = (int)roundf(b->Position.X / 256.0f);
+
+      // Mark these nodes in A* grid blocked (our coord and +2 highres each dir)
+      for (int rowoffset = -2; rowoffset < 3; rowoffset++)
+      {
+         for (int coloffset = -2; coloffset < 3; coloffset++)
+         {
+            int r = row + rowoffset;
+            int c = col + coloffset;
+
+            // outside
+            if (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres)
+               continue;
+
+            astar_node* node = &Room->Astar.Grid[r][c];
+            node->Data->isBlocked = true;
+         }
+      }
+      b = b->Next;
+   }
+}
+
 __inline bool AStarProcessNode(room_type* Room)
 {
    // shortcuts
@@ -102,12 +140,12 @@ __inline bool AStarProcessNode(room_type* Room)
          // get candidate node for indices
          astar_node* candidate = &Room->Astar.Grid[r][c];
 
-         // skip if ourself and any other already examined
-         if (candidate == Node || candidate->Data->isInClosedList)
+         // skip ourself, any already examined or blocked node
+         if (candidate == Node || candidate->Data->isInClosedList || candidate->Data->isBlocked)
             continue;
 
          // can't move from node to this candidate
-         if (!BSPCanMoveInRoom(Room, &Node->Location, &candidate->Location, Room->Astar.ObjectID, false))
+         if (!BSPCanMoveInRoom(Room, &Node->Location, &candidate->Location, Room->Astar.ObjectID, false, true))
             continue;
 
          // cost for diagonal is sqrt(2), otherwise 1
@@ -274,6 +312,9 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
 
    // prepare non-persistent astar grid data memory
    ZeroMemory(Room->Astar.NodesData, Room->Astar.NodesDataSize);
+
+   // mark nodes blocked by objects
+   AStarAddBlockers(Room, ObjectID);
 
    /**********************************************************************/
 

@@ -26,6 +26,7 @@ typedef struct astar_node_data
    astar_node* parent;
    astar_node* nextopen;
    bool        isInClosedList;
+   bool        isBlocked;
 } astar_node_data;
 
 typedef struct astar_node
