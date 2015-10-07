@@ -13,8 +13,6 @@
 #ifndef _ROOFILE_H
 #define _ROOFILE_H
 
-#include "geometry.h"
-
 #pragma region Macros
 /**************************************************************************************************************/
 /*                                           MACROS                                                           */
@@ -53,6 +51,7 @@
 #define ROUNDROOTOKODFINENESS(a) FINENESSKODTOROO(roundf(FINENESSROOTOKOD(a)))
 
 // from blakston.khd, used in BSPGetNextStepTowards across calls
+#define ESTATE_LONG_STEP 0x00002000
 #define ESTATE_AVOIDING  0x00004000
 #define ESTATE_CLOCKWISE 0x00008000
 
@@ -210,7 +209,9 @@ typedef struct room_type
    Side*          Sides;
    unsigned short SidesCount;
    Sector*        Sectors;
-   unsigned short SectorsCount; 
+   unsigned short SectorsCount;
+
+   astar          Astar;
 } room_type;
 #pragma endregion
 
