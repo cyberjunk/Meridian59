@@ -34,6 +34,7 @@ typedef struct astar_node
    int              Row;
    int              Col;
    V2               Location;
+   bool             IsOutside;
    astar_node_data* Data;
 } astar_node;
 

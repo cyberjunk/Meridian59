@@ -140,8 +140,8 @@ __inline bool AStarProcessNode(room_type* Room)
          // get candidate node for indices
          astar_node* candidate = &Room->Astar.Grid[r][c];
 
-         // skip ourself, any already examined or blocked node
-         if (candidate == Node || candidate->Data->isInClosedList || candidate->Data->isBlocked)
+         // skip ourself, any already examined, blocked or outside node
+         if (candidate == Node || candidate->Data->isInClosedList || candidate->Data->isBlocked || candidate->IsOutside)
             continue;
 
          // can't move from node to this candidate
@@ -256,15 +256,22 @@ void AStarGenerateGrid(room_type* Room)
    {
       for (int j = 0; j < Room->colshighres; j++)
       {
-         Room->Astar.Grid[i][j].Row = i;
-         Room->Astar.Grid[i][j].Col = j;
+         astar_node* node = &Room->Astar.Grid[i][j];
+         float f1, f2, f3;
+         BspLeaf* leaf;
+
+         node->Row = i;
+         node->Col = j;
 
          // floatingpoint coordinates of the center of the square in ROO fineness (for queries)
-         Room->Astar.Grid[i][j].Location.X = j * 256.0f;// +128.0f;
-         Room->Astar.Grid[i][j].Location.Y = i * 256.0f;// +128.0f;
+         node->Location.X = j * 256.0f;// +128.0f;
+         node->Location.Y = i * 256.0f;// +128.0f;
+
+		 // mark if this square is inside or outside of room
+         node->IsOutside = !BSPGetHeight(Room, &node->Location, &f1, &f2, &f3, &leaf);
 
          // setup reference to data (costs etc.) in erasable mem area 
-         Room->Astar.Grid[i][j].Data = &Room->Astar.NodesData[i*Room->colshighres + j];
+         node->Data = &Room->Astar.NodesData[i*Room->colshighres + j];
       }
    }
 }
