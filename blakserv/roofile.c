@@ -444,7 +444,7 @@ bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E)
    else if (distS < -WALLMINDISTANCE && distE < -WALLMINDISTANCE)
       return BSPCanMoveInRoomTree(Node->u.internal.LeftChild, S, E);
 
-   // endpoints are on different sides, one/both on infinite line or potentially too close
+   // endpoints are on different sides, or one/both on infinite line or potentially too close
    // --> check walls of splitter first and then possibly climb down both subtrees
    else
    {
@@ -467,67 +467,66 @@ bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E)
          b1 = S->X - E->X;
          c1 = a1 * S->X + b1 * S->Y;
 
-         // iterate finite segments (walls) in this splitter
-         Wall* wall = Node->u.internal.FirstWall;
-         while (wall)
+         // get 2d line equation coefficients of splitter
+         float a2, b2, c2;
+         a2 = -Node->u.internal.A;
+         b2 = -Node->u.internal.B;
+         c2 = Node->u.internal.C;
+
+         float det = a1*b2 - a2*b1;
+
+         // shouldn't be zero at all, because distS and distE have different sign
+         if (!ISZERO(det))
          {
-            // get 2d line equation coefficients for infinite line through P1 and P2
-            // NOTE: This should be using BspInternal A,B,C coefficients
-            float a2, b2, c2;
-            a2 = wall->P2.Y - wall->P1.Y;
-            b2 = wall->P1.X - wall->P2.X;
-            c2 = a2 * wall->P1.X + b2 * wall->P1.Y;
-
-            float det = a1*b2 - a2*b1;
-
-            // parallel (or identical) lines
-            // should not happen here but is important for div by 0
-            if (ISZERO(det))
-            {
-               wall = wall->NextWallInPlane;
-               continue;
-            }
-
             // intersection point of infinite lines				
             q.X = (b2*c1 - b1*c2) / det;
             q.Y = (a1*c2 - a2*c1) / det;
 
-            // infinite intersection point must be in BOTH
-            // finite segments boundingboxes, otherwise no intersect
-            if (!ISINBOX(S, E, &q) || !ISINBOX(&wall->P1, &wall->P2, &q))
+            // must be in boundingbox of SE
+            if (ISINBOX(S, E, &q))
             {
-               wall = wall->NextWallInPlane;
-               continue;
-            }
+               // iterate finite segments (walls) in this splitter
+               Wall* wall = Node->u.internal.FirstWall;
+               while (wall)
+               {
+                  // infinite intersection point must also be in bbox of wall
+                  // otherwise no intersect
+                  if (!ISINBOX(&wall->P1, &wall->P2, &q))
+                  {
+                     wall = wall->NextWallInPlane;
+                     continue;
+                  }
 
-            // set from and to sector / side
-            if (distS > 0.0f)
-            {
-               sideS = wall->RightSide;
-               sectorS = wall->RightSector;
-            }
-            else
-            {
-               sideS = wall->LeftSide;
-               sectorS = wall->LeftSector;
-            }
+                  // set from and to sector / side
+                  if (distS > 0.0f)
+                  {
+                     sideS = wall->RightSide;
+                     sectorS = wall->RightSector;
+                  }
+                  else
+                  {
+                     sideS = wall->LeftSide;
+                     sectorS = wall->LeftSector;
+                  }
 
-            if (distE > 0.0f)
-            {
-               sideE = wall->RightSide;
-               sectorE = wall->RightSector;
-            }
-            else
-            {
-               sideE = wall->LeftSide;
-               sectorE = wall->LeftSector;
-            }
+                  if (distE > 0.0f)
+                  {
+                     sideE = wall->RightSide;
+                     sectorE = wall->RightSector;
+                  }
+                  else
+                  {
+                     sideE = wall->LeftSide;
+                     sectorE = wall->LeftSector;
+                  }
 
-            // check the transition data for this wall
-            if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
-               return false;
+                  // check the transition data for this wall
+                  if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
+                     return false;
 
-            wall = wall->NextWallInPlane;
+                  wall = wall->NextWallInPlane;
+               }
+            }		 
          }
       }
 
