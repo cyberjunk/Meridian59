@@ -535,46 +535,50 @@ bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E)
       // q will store the too-close endpoint
       else
       {
-         // iterate finite segments (walls) in this splitter
-         Wall* wall = Node->u.internal.FirstWall;
-         while (wall)
+         // check only getting closer
+         if (fabs(distE) <= fabs(distS))
          {
-            // get min. squared distance from move endpoint to line segment
-            float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2);
-
-            // skip if far enough away
-            if (dist2 > WALLMINDISTANCE2)
+            // iterate finite segments (walls) in this splitter
+            Wall* wall = Node->u.internal.FirstWall;
+            while (wall)
             {
+               // get min. squared distance from move endpoint to line segment
+               float dist2 = MinSquaredDistanceToLineSegment(E, &wall->P1, &wall->P2);
+
+               // skip if far enough away
+               if (dist2 > WALLMINDISTANCE2)
+               {
+                  wall = wall->NextWallInPlane;
+                  continue;
+               }
+
+               q.X = E->X;
+               q.Y = E->Y;
+
+               // set from and to sector / side
+               // for case 2 (too close) these are based on (S),
+               // and (E) is assumed to be on the other side.
+               if (distS >= 0.0f)
+               {
+                  sideS = wall->RightSide;
+                  sectorS = wall->RightSector;
+                  sideE = wall->LeftSide;
+                  sectorE = wall->LeftSector;
+               }
+               else
+               {
+                  sideS = wall->LeftSide;
+                  sectorS = wall->LeftSector;
+                  sideE = wall->RightSide;
+                  sectorE = wall->RightSector;
+               }
+
+               // check the transition data for this wall
+               if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
+                  return false;
+
                wall = wall->NextWallInPlane;
-               continue;
             }
-
-            q.X = E->X;
-            q.Y = E->Y;
-
-            // set from and to sector / side
-            // for case 2 (too close) these are based on (S),
-            // and (E) is assumed to be on the other side.
-            if (distS >= 0.0f)
-            {
-               sideS = wall->RightSide;
-               sectorS = wall->RightSector;
-               sideE = wall->LeftSide;
-               sectorE = wall->LeftSector;
-            }
-            else
-            {
-               sideS = wall->LeftSide;
-               sectorS = wall->LeftSector;
-               sideE = wall->RightSide;
-               sectorE = wall->RightSector;
-            }
-
-            // check the transition data for this wall
-            if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
-               return false;
-
-            wall = wall->NextWallInPlane;
          }
       }
 
