@@ -15,6 +15,10 @@
 #define CLOSEENOUGHDIST   3
 #define ASTARENABLED      1
 
+#define LCHILD(x) (2 * x + 1)
+#define RCHILD(x) (2 * x + 2)
+#define PARENT(x) ((x-1) / 2)
+
 typedef struct room_type room_type;
 typedef struct astar_node_data astar_node_data;
 typedef struct astar_node astar_node;
@@ -23,8 +27,10 @@ typedef struct astar_node_data
 {
    float       cost;
    float       heuristic;
+   float       combined;
    astar_node* parent;
-   astar_node* nextopen;
+   astar_node* heapslot;
+   int         heapindex;
    bool        isInClosedList;
    bool        isBlocked;
 } astar_node_data;
@@ -43,10 +49,10 @@ typedef struct astar
    astar_node_data* NodesData;
    int              NodesDataSize;
    astar_node**     Grid;
-   astar_node*      Open;
    astar_node*      EndNode;
    astar_node*      LastNode;
    int              ObjectID;
+   int              HeapSize;
 } astar;
 
 void AStarGenerateGrid(room_type* Room);

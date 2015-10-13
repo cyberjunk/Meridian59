@@ -6,7 +6,7 @@
 //
 // Meridian is a registered trademark.
 /*
-* roofile.c
+* astar.c
 *
 
 Improvements over the old implementation:
@@ -19,51 +19,173 @@ Improvements over the old implementation:
 
 #include "blakserv.h"
 
-__inline void AStarOpenListInsert(room_type* Room, astar_node* Node)
-{
-   // add it sorted by lowest cost first to the open list
-   astar_node* node = Room->Astar.Open;
-   astar_node* prev = NULL;
-   while (node && ((node->Data->cost + node->Data->heuristic) < (Node->Data->cost + Node->Data->heuristic)))
-   {
-      prev = node;
-      node = node->Data->nextopen;
-   }
+// refers to the i-th element on the heap of a room
+#define HEAP(r, i) ((r)->Astar.NodesData[i].heapslot)
 
-   if (!prev)
+bool AStarHeapCheck(room_type* Room, int i)
+{
+	int squares = Room->colshighres * Room->rowshighres;
+
+	if (i >= squares)
+		return true;
+
+	if (!HEAP(Room, i))
+		return true;
+
+	float our = HEAP(Room, i)->Data->combined;
+	int lchild = LCHILD(i);
+	int rchild = RCHILD(i);
+
+	if (lchild < squares)
+	{
+		astar_node* node = HEAP(Room, lchild);
+		if (node)
+		{
+			if (node->Data->combined < our)
+				return false;
+		}
+	}
+	if (rchild < squares)
+	{
+		astar_node* node = HEAP(Room, rchild);
+		if (node)
+		{
+			if (node->Data->combined < our)
+				return false;
+		}
+	}
+
+	bool retval = AStarHeapCheck(Room, lchild);
+	if (!retval)
+		return false;
+
+	return AStarHeapCheck(Room, rchild);
+}
+
+void AStarWriteHeapToFile(room_type* Room)
+{
+	int rows = Room->rowshighres;
+	int cols = Room->colshighres;
+	char* rowstring = (char *)AllocateMemory(MALLOC_ID_ROOM, 60000);
+	FILE *fp = fopen("heapdebug.txt", "a");
+	if (fp)
+	{
+		int maxlayer = 9;	
+		int treesize = Room->colshighres * Room->rowshighres;
+		int rangestart = 0;
+		int rangesize = 1;
+		for (int i = 1; i < maxlayer; i++)
+		{
+			if (treesize < rangestart + rangesize)
+				break;
+
+			sprintf(rowstring, "L:%.2i", i);
+		
+			for (int k = 0; k < rangesize; k++)
+			{				
+				astar_node* node = Room->Astar.NodesData[rangestart + k].heapslot;
+
+				if (node)
+					sprintf(rowstring, "%s|%6.2f|", rowstring, node->Data->combined);
+				else
+					sprintf(rowstring, "%s|XXXXXX|", rowstring);
+			}
+
+			sprintf(rowstring, "%s\n", rowstring);
+			fputs(rowstring, fp);
+			
+			rangestart = rangestart + rangesize; 
+			rangesize *= 2;		
+		}
+		sprintf(rowstring, "%s\n", rowstring);
+		fclose(fp);
+	}
+	FreeMemory(MALLOC_ID_ROOM, rowstring, 60000);
+}
+
+__inline void AStarHeapSwap(room_type* Room, int idx1, int idx2)
+{
+   astar_node* node1 = HEAP(Room, idx1);
+   astar_node* node2 = HEAP(Room, idx2);	
+   HEAP(Room, idx1) = node2;
+   HEAP(Room, idx2) = node1;
+   node1->Data->heapindex = idx2;
+   node2->Data->heapindex = idx1;
+}
+
+__inline void AStarHeapMoveUp(room_type* Room, int Index)
+{
+   int i = Index;
+   while (i > 0 && HEAP(Room, i)->Data->combined < HEAP(Room, PARENT(i))->Data->combined)
    {
-      Node->Data->nextopen = Room->Astar.Open;
-      Room->Astar.Open = Node;
-   }
-   else
-   {
-      // insert
-      Node->Data->nextopen = prev->Data->nextopen;
-      prev->Data->nextopen = Node;
+      AStarHeapSwap(Room, i, PARENT(i));
+      i = PARENT(i);
    }
 }
 
-__inline void AStarOpenListRemove(room_type* Room, astar_node* Node)
+__inline void AStarHeapHeapify(room_type* Room, int Index)
 {
-   astar_node* node = Room->Astar.Open;
-   astar_node* prev = NULL;
-   while (node)
+   int i = Index;
+   do 
    {
-      if (node == Node)
-      {
-         // removed not first -> link previous to next one
-         if (prev)
-            prev->Data->nextopen = node->Data->nextopen;
+      int min = i;
+	  if (HEAP(Room, LCHILD(i)) && HEAP(Room, LCHILD(i))->Data->combined < HEAP(Room, min)->Data->combined)
+		  min = LCHILD(i);
+	  if (HEAP(Room, RCHILD(i)) && HEAP(Room, RCHILD(i))->Data->combined < HEAP(Room, min)->Data->combined)
+		  min = RCHILD(i);
+      if (min == i)
+         break;
+      AStarHeapSwap(Room, i, min);
+      i = min;
+   } 
+   while (true);
+}
 
-         // removed first -> set listhead to next
-         else
-            Room->Astar.Open = node->Data->nextopen;
+__inline void AStarHeapInsert(room_type* Room, astar_node* Node)
+{
+   // save index of this node
+   Node->Data->heapindex = Room->Astar.HeapSize;
 
-         return;
-      }
+   // add node at the end
+   HEAP(Room, Node->Data->heapindex) = Node;
 
-      prev = node;
-      node = node->Data->nextopen;
+   // increment
+   Room->Astar.HeapSize++;
+
+   // push node up until in place
+   AStarHeapMoveUp(Room, Node->Data->heapindex);
+}
+
+__inline void AStarHeapRemoveFirst(room_type* Room)
+{
+   int lastIdx = Room->Astar.HeapSize - 1;
+
+   // no elements
+   if (lastIdx < 0)
+      return;
+
+   // decrement size
+   Room->Astar.HeapSize--;
+
+   // more than 1
+   if (lastIdx > 0)
+   {
+      // put last at root
+      AStarHeapSwap(Room, 0, lastIdx);
+
+      // zero out the previous root at swapped slot
+	  HEAP(Room, lastIdx)->Data->heapindex = 0;
+	  HEAP(Room, lastIdx) = NULL;
+	  
+      // reorder tree
+      AStarHeapHeapify(Room, 0);
+   }
+
+   // only one, clear head
+   else
+   {
+      HEAP(Room, 0)->Data->heapindex = 0;
+      HEAP(Room, 0) = NULL;
    }
 }
 
@@ -108,7 +230,7 @@ __inline void AStarAddBlockers(room_type *Room, int ObjectID)
 __inline bool AStarProcessNode(room_type* Room)
 {
    // shortcuts
-   astar_node* Node = Room->Astar.Open;
+   astar_node* Node = HEAP(Room, 0);
    astar_node* EndNode = Room->Astar.EndNode;
 
    // openlist empty, unreachable
@@ -158,20 +280,20 @@ __inline bool AStarProcessNode(room_type* Room)
             float dx = fabs((float)candidate->Col - (float)EndNode->Col);
             float dy = fabs((float)candidate->Row - (float)EndNode->Row);
             candidate->Data->heuristic = 1.0f * (dx + dy) + ((float)M_SQRT2 - 2.0f * 1.0f) * fminf(dx, dy);
+			candidate->Data->heuristic *= 0.1f;
          }
 
          // CASE 1)
          // if this candidate has no parent yet (never visited before)
          if (!candidate->Data->parent)
          {
-            // set Node as parent of candidate
-            candidate->Data->parent = Node;
-
             // cost to candidate is cost to Node + one step
+            candidate->Data->parent = Node;
             candidate->Data->cost = Node->Data->cost + stepcost;
-				
+            candidate->Data->combined = candidate->Data->cost + candidate->Data->heuristic;
+
             // add it sorted to the open list
-            AStarOpenListInsert(Room, candidate);
+            AStarHeapInsert(Room, candidate);
          }
 
          // CASE 2)
@@ -180,16 +302,17 @@ __inline bool AStarProcessNode(room_type* Room)
          {
             // our cost to the candidate
             float newcost = Node->Data->cost + stepcost;
+			float newcombined = newcost + candidate->Data->heuristic;
 
             // we're cheaper, so update the candidate
-            if (newcost < candidate->Data->cost)
+            if (newcombined < candidate->Data->combined)
             {
                candidate->Data->parent = Node;
                candidate->Data->cost = newcost;
+               candidate->Data->combined = newcombined;
 
-               // remove it and add it to possibly new sorted index
-               AStarOpenListRemove(Room, candidate);
-               AStarOpenListInsert(Room, candidate);
+               // reorder it upwards in the heap tree			   
+			   AStarHeapMoveUp(Room, candidate->Data->heapindex);
             }
          }
       }
@@ -201,7 +324,7 @@ __inline bool AStarProcessNode(room_type* Room)
    Node->Data->isInClosedList = true;
 
    // remove it from the open list
-   AStarOpenListRemove(Room, Node);
+   AStarHeapRemoveFirst(Room);
 
    return true;
 }
@@ -221,7 +344,7 @@ void AStarWriteGridToFile(room_type* Room)
          sprintf(rowstring, "Row %3i- ", row);
          for (int col = 0; col < cols; col++)
          {
-            sprintf(rowstring, "%s|%6.2f|", rowstring, Room->Astar.Grid[row][col].Data->cost);
+            sprintf(rowstring, "%s|%7.3f|", rowstring, Room->Astar.Grid[row][col].Data->combined);
          }
          sprintf(rowstring, "%s \n", rowstring);
          fputs(rowstring, fp);
@@ -270,7 +393,7 @@ void AStarGenerateGrid(room_type* Room)
 		 // mark if this square is inside or outside of room
          node->IsOutside = !BSPGetHeight(Room, &node->Location, &f1, &f2, &f3, &leaf);
 
-         // setup reference to data (costs etc.) in erasable mem area 
+         // setup reference to data (costs etc.) in erasable mem area
          node->Data = &Room->Astar.NodesData[i*Room->colshighres + j];
       }
    }
@@ -311,11 +434,10 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    astar_node* startnode = &Room->Astar.Grid[startrow][startcol];
    Room->Astar.EndNode = &Room->Astar.Grid[endrow][endcol];
 
-   // init the openlist with the startnode
-   // and set the LastNode to NULL
-   Room->Astar.Open = startnode;
+   // init the astar struct
    Room->Astar.LastNode = NULL;
    Room->Astar.ObjectID = ObjectID;
+   Room->Astar.HeapSize = 0;
 
    // prepare non-persistent astar grid data memory
    ZeroMemory(Room->Astar.NodesData, Room->Astar.NodesDataSize);
@@ -325,12 +447,15 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
 
    /**********************************************************************/
 
+   // insert startnode into heap-tree
+   AStarHeapInsert(Room, startnode);
+
    // the algorithm finishes if we either hit a node close enough to endnode
    // or if there is no more entries in the open list (unreachable)
    while (AStarProcessNode(Room)) { }
 
    //AStarWriteGridToFile(Room);
-
+   //AStarWriteHeapToFile(Room);
    /**********************************************************************/
 
    // now let's walk back our parent pointers starting from the LastNode
