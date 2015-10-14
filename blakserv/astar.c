@@ -280,7 +280,7 @@ __inline bool AStarProcessNode(room_type* Room)
             float dx = fabs((float)candidate->Col - (float)EndNode->Col);
             float dy = fabs((float)candidate->Row - (float)EndNode->Row);
             candidate->Data->heuristic = 1.0f * (dx + dy) + ((float)M_SQRT2 - 2.0f * 1.0f) * fminf(dx, dy);
-			candidate->Data->heuristic *= 0.1f;
+            candidate->Data->heuristic *= 0.999f; // tie breaker and fixes h(nondiagonal) not lower exact cost
          }
 
          // CASE 1)
@@ -302,17 +302,19 @@ __inline bool AStarProcessNode(room_type* Room)
          {
             // our cost to the candidate
             float newcost = Node->Data->cost + stepcost;
-			float newcombined = newcost + candidate->Data->heuristic;
 
             // we're cheaper, so update the candidate
-            if (newcombined < candidate->Data->combined)
+            // the real cost matters here, not including the heuristic
+			if (newcost < candidate->Data->cost)
             {
                candidate->Data->parent = Node;
                candidate->Data->cost = newcost;
-               candidate->Data->combined = newcombined;
+               candidate->Data->combined = newcost + candidate->Data->heuristic;
 
-               // reorder it upwards in the heap tree			   
-			   AStarHeapMoveUp(Room, candidate->Data->heapindex);
+               // reorder it upwards in the heap tree, don't care about downordering
+               // since costs are lower and heuristic is always the same,
+               // it's guaranteed to be moved up
+               AStarHeapMoveUp(Room, candidate->Data->heapindex);
             }
          }
       }
