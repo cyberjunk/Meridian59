@@ -19,6 +19,9 @@
 #define RCHILD(x) (2 * x + 2)
 #define PARENT(x) ((x-1) / 2)
 
+#define HCOST       1.0f
+#define HCOST_DIAG  ((float)M_SQRT2)
+
 typedef struct room_type room_type;
 typedef struct astar_node_data astar_node_data;
 typedef struct astar_node astar_node;

@@ -270,7 +270,7 @@ __inline bool AStarProcessNode(room_type* Room)
          // can't move from node to this candidate
          if (!BSPCanMoveInRoom(Room, &node->Location, &candidate->Location, Room->Astar.ObjectID, false, true))
             continue;
-
+		 
          // cost for diagonal is sqrt(2), otherwise 1
          float stepcost = (abs(rowoffset) && abs(coloffset)) ? (float)M_SQRT2 : 1.0f;
 			
@@ -278,9 +278,9 @@ __inline bool AStarProcessNode(room_type* Room)
          // need to do this only once
          if (candidate->Data->heuristic == 0.0f)
          {
-            float dx = fabs((float)candidate->Col - (float)endNode->Col);
-            float dy = fabs((float)candidate->Row - (float)endNode->Row);
-            candidate->Data->heuristic = 1.0f * (dx + dy) + ((float)M_SQRT2 - 2.0f * 1.0f) * fminf(dx, dy);
+            float dx = (float)abs(candidate->Col - endNode->Col);
+            float dy = (float)abs(candidate->Row - endNode->Row);
+            candidate->Data->heuristic = HCOST * (dx + dy) + (HCOST_DIAG - 2.0f * HCOST) * fminf(dx, dy); // octile-distance
             candidate->Data->heuristic *= 0.999f; // tie breaker and fixes h(nondiagonal) not lower exact cost
          }
 
