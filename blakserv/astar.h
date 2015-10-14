@@ -13,6 +13,7 @@
 #define _ASTAR_H
 
 #define CLOSEENOUGHDIST   3
+#define DESTBLOCKIGNORE   3
 #define ASTARENABLED      1
 
 #define LCHILD(x) (2 * x + 1)

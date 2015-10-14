@@ -190,7 +190,7 @@ __inline void AStarHeapRemoveFirst(room_type* Room)
    }
 }
 
-__inline void AStarAddBlockers(room_type *Room, int ObjectID)
+__inline void AStarAddBlockers(room_type *Room)
 {
    Blocker* b;
 	
@@ -198,7 +198,7 @@ __inline void AStarAddBlockers(room_type *Room, int ObjectID)
    while (b)
    {
       // Don't add self.
-      if (b->ObjectID == ObjectID)
+      if (b->ObjectID == Room->Astar.ObjectID)
       {
          b = b->Next;
          continue;
@@ -207,6 +207,14 @@ __inline void AStarAddBlockers(room_type *Room, int ObjectID)
       // Get blocker coords
       int row = (int)roundf(b->Position.Y / 256.0f);
       int col = (int)roundf(b->Position.X / 256.0f);
+	  
+      // Don't add blockers at the target coords.
+	  if (abs(row - Room->Astar.EndNode->Row) < DESTBLOCKIGNORE &&
+		  abs(col - Room->Astar.EndNode->Col) < DESTBLOCKIGNORE)
+	  {
+         b = b->Next;
+         continue;
+      }
 
       // Mark these nodes in A* grid blocked (our coord and +2 highres each dir)
       for (int rowoffset = -2; rowoffset < 3; rowoffset++)
@@ -445,10 +453,10 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    // prepare non-persistent astar grid data memory
    ZeroMemory(Room->Astar.NodesData, Room->Astar.NodesDataSize);
 
-   // mark nodes blocked by objects
-   AStarAddBlockers(Room, ObjectID);
-
    /**********************************************************************/
+
+   // mark nodes blocked by objects 
+   AStarAddBlockers(Room);
 
    // insert startnode into heap-tree
    AStarHeapInsert(Room, startnode);
