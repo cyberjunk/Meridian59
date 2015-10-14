@@ -13,8 +13,9 @@ Improvements over the old implementation:
   * Allocation of gridmemory is only done once when room is loaded
   * Node information is split up between persistent data and data
     which needs to be cleared for each algorithm and can be by single ZeroMemory
-  * Whether a node is in the open or closed set is not saved and looked up by an additional list,
+  * Whether a node is in the closed set is not saved and looked up by an additional list,
     but rather simply saved by a flag on that node.
+  * Uses a binary heap to store the open set
 */
 
 #include "blakserv.h"
@@ -230,18 +231,18 @@ __inline void AStarAddBlockers(room_type *Room, int ObjectID)
 __inline bool AStarProcessNode(room_type* Room)
 {
    // shortcuts
-   astar_node* Node = HEAP(Room, 0);
-   astar_node* EndNode = Room->Astar.EndNode;
+   astar_node* node = HEAP(Room, 0);
+   astar_node* endNode = Room->Astar.EndNode;
 
    // openlist empty, unreachable
-   if (!Node)
+   if (!node)
       return false;
 
    // close enough, we're done, path found
-   if (abs(Node->Col - EndNode->Col) < CLOSEENOUGHDIST &&
-       abs(Node->Row - EndNode->Row) < CLOSEENOUGHDIST)
+   if (abs(node->Col - endNode->Col) < CLOSEENOUGHDIST &&
+       abs(node->Row - endNode->Row) < CLOSEENOUGHDIST)
    {
-      Room->Astar.LastNode = Node;
+      Room->Astar.LastNode = node;
       return false;
    }
 
@@ -252,8 +253,8 @@ __inline bool AStarProcessNode(room_type* Room)
       for (int coloffset = -1; coloffset < 2; coloffset++)
       {
          // indices of node to process
-         int r = Node->Row + rowoffset;
-         int c = Node->Col + coloffset;
+         int r = node->Row + rowoffset;
+         int c = node->Col + coloffset;
 
          // outside
          if (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres)
@@ -263,11 +264,11 @@ __inline bool AStarProcessNode(room_type* Room)
          astar_node* candidate = &Room->Astar.Grid[r][c];
 
          // skip ourself, any already examined, blocked or outside node
-         if (candidate == Node || candidate->Data->isInClosedList || candidate->Data->isBlocked || candidate->IsOutside)
+         if (candidate == node || candidate->Data->isInClosedList || candidate->Data->isBlocked || candidate->IsOutside)
             continue;
 
          // can't move from node to this candidate
-         if (!BSPCanMoveInRoom(Room, &Node->Location, &candidate->Location, Room->Astar.ObjectID, false, true))
+         if (!BSPCanMoveInRoom(Room, &node->Location, &candidate->Location, Room->Astar.ObjectID, false, true))
             continue;
 
          // cost for diagonal is sqrt(2), otherwise 1
@@ -277,8 +278,8 @@ __inline bool AStarProcessNode(room_type* Room)
          // need to do this only once
          if (candidate->Data->heuristic == 0.0f)
          {
-            float dx = fabs((float)candidate->Col - (float)EndNode->Col);
-            float dy = fabs((float)candidate->Row - (float)EndNode->Row);
+            float dx = fabs((float)candidate->Col - (float)endNode->Col);
+            float dy = fabs((float)candidate->Row - (float)endNode->Row);
             candidate->Data->heuristic = 1.0f * (dx + dy) + ((float)M_SQRT2 - 2.0f * 1.0f) * fminf(dx, dy);
             candidate->Data->heuristic *= 0.999f; // tie breaker and fixes h(nondiagonal) not lower exact cost
          }
@@ -288,8 +289,8 @@ __inline bool AStarProcessNode(room_type* Room)
          if (!candidate->Data->parent)
          {
             // cost to candidate is cost to Node + one step
-            candidate->Data->parent = Node;
-            candidate->Data->cost = Node->Data->cost + stepcost;
+            candidate->Data->parent = node;
+            candidate->Data->cost = node->Data->cost + stepcost;
             candidate->Data->combined = candidate->Data->cost + candidate->Data->heuristic;
 
             // add it sorted to the open list
@@ -301,13 +302,13 @@ __inline bool AStarProcessNode(room_type* Room)
          else
          {
             // our cost to the candidate
-            float newcost = Node->Data->cost + stepcost;
+            float newcost = node->Data->cost + stepcost;
 
             // we're cheaper, so update the candidate
             // the real cost matters here, not including the heuristic
 			if (newcost < candidate->Data->cost)
             {
-               candidate->Data->parent = Node;
+               candidate->Data->parent = node;
                candidate->Data->cost = newcost;
                candidate->Data->combined = newcost + candidate->Data->heuristic;
 
@@ -323,7 +324,7 @@ __inline bool AStarProcessNode(room_type* Room)
    /****************************************************************/
 
    // mark this node processed
-   Node->Data->isInClosedList = true;
+   node->Data->isInClosedList = true;
 
    // remove it from the open list
    AStarHeapRemoveFirst(Room);
