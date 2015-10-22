@@ -12,6 +12,8 @@
 #ifndef _ASTAR_H
 #define _ASTAR_H
 
+#define EDGESCACHEENABLED 1
+
 #define CLOSEENOUGHDIST   3
 #define DESTBLOCKIGNORE   3
 #define ASTARENABLED      1

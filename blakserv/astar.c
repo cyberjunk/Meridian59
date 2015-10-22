@@ -241,9 +241,11 @@ __inline void AStarAddBlockers(room_type *Room)
 
 __inline bool AStarCanWalkEdge(room_type* Room, astar_node* Node, astar_node* Neighbour, unsigned short KnowsVal, unsigned short CanVal)
 {
+   Wall* blockWall;
+
+#if EDGESCACHEENABLED
    bool knows = (((*Node->Edges) & KnowsVal) == KnowsVal);
    bool can;
-   Wall* blockWall;
 
    // not yet cached
    if (!knows)
@@ -260,6 +262,10 @@ __inline bool AStarCanWalkEdge(room_type* Room, astar_node* Node, astar_node* Ne
       can = (((*Node->Edges) & CanVal) == CanVal);
 
    return can;
+
+#else
+   return BSPCanMoveInRoom(Room, &Node->Location, &Neighbour->Location, Room->Astar.ObjectID, false, &blockWall, true);
+#endif
 }
 
 __inline void AStarProcessNeighbour(room_type* Room, astar_node* EndNode, astar_node* Node, astar_node* Neighbour, float StepCost, unsigned short KnowsVal, unsigned short CanVal)
