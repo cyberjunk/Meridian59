@@ -408,6 +408,8 @@ void AStarGenerateGrid(room_type* Room)
    Room->Astar.NodesData = (astar_node_data*)AllocateMemory(
       MALLOC_ID_ASTAR, Room->Astar.NodesDataSize);
 
+   /**********************************************************************/
+#if EDGESCACHEENABLED
    // allocate memory to cache edges (BSP queries)
    Room->Astar.EdgesCacheSize = Room->colshighres * Room->rowshighres * sizeof(unsigned short);
 
@@ -415,21 +417,31 @@ void AStarGenerateGrid(room_type* Room)
 	   MALLOC_ID_ASTAR, Room->Astar.EdgesCacheSize);
 
    AStarClearEdgesCache(Room);
+#endif
+   /**********************************************************************/
+#if PATHCACHEENABLED
+   // setup path cache
+   for (int i = 0; i < PATHCACHESIZE; i++)  
+      Room->Astar.Paths[i] = new astar_path();
+#endif
+   /**********************************************************************/
 
    // allocate memory for the persistent nodesinfo (typical 2d array by **)
    Room->Astar.Grid = (astar_node**)AllocateMemory(
       MALLOC_ID_ASTAR, Room->rowshighres * sizeof(astar_node*));
 
-   // setup rows
-   for (int i = 0; i < Room->rowshighres; i++)	
+   // allocate rows
+   for (int i = 0; i < Room->rowshighres; i++)
       Room->Astar.Grid[i] = (astar_node*)AllocateMemory(
-         MALLOC_ID_ASTAR, Room->colshighres * sizeof(astar_node));
+	     MALLOC_ID_ASTAR, Room->colshighres * sizeof(astar_node));
+
+   /**********************************************************************/
 
    // setup all squares
    for (int i = 0; i < Room->rowshighres; i++)
    {
-      for (int j = 0; j < Room->colshighres; j++)
-      {
+	  for (int j = 0; j < Room->colshighres; j++)
+	  {
          astar_node* node = &Room->Astar.Grid[i][j];
          float f1, f2, f3;
          node->Row = i;
@@ -446,10 +458,10 @@ void AStarGenerateGrid(room_type* Room)
 
          // setup reference to data (costs etc.) in erasable mem area
          node->Data = &Room->Astar.NodesData[idx];
-
+#if EDGESCACHEENABLED
          // setup reference to edgesdata in edgescache
          node->Edges = &Room->Astar.EdgesCache[idx];
-
+#endif
          // setup neighbour pointers
          int r, c;
 
@@ -494,21 +506,94 @@ void AStarFreeGrid(room_type* Room)
    // free workdata mem
    FreeMemory(MALLOC_ID_ASTAR, Room->Astar.NodesData, Room->Astar.NodesDataSize);
 
+#if EDGESCACHEENABLED
    // free edgescache mem
    FreeMemory(MALLOC_ID_ASTAR, Room->Astar.EdgesCache, Room->Astar.EdgesCacheSize);
+#endif
+
+#if PATHCACHEENABLED
+   // free pathes list allocations
+   for (int i = 0; i < PATHCACHESIZE; i++)
+      delete Room->Astar.Paths[i];
+#endif
 
    // free each row mem
-   for (int i = 0; i < Room->rowshighres; i++)	
+   for (int i = 0; i < Room->rowshighres; i++)
       FreeMemory(MALLOC_ID_ASTAR, Room->Astar.Grid[i], Room->colshighres * sizeof(astar_node));
-	
+
    // free rowsmem
    FreeMemory(MALLOC_ID_ASTAR, Room->Astar.Grid, Room->rowshighres * sizeof(astar_node*));
 }
 
+#if EDGESCACHEENABLED
 void AStarClearEdgesCache(room_type* Room)
 {
    ZeroMemory(Room->Astar.EdgesCache, Room->Astar.EdgesCacheSize);
 }
+#endif
+
+#if PATHCACHEENABLED
+void AStarClearPathCache(room_type* Room)
+{
+   for (int i = 0; i < PATHCACHESIZE; i++)
+      Room->Astar.Paths[i]->clear();
+}
+
+bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P, unsigned int* Flags, int ObjectID)
+{
+   Wall* blockWall;
+
+   for (int i = 0; i < PATHCACHESIZE; i++)
+   {
+      astar_path* path = Room->Astar.Paths[i];
+
+      // a valid path would have two entries
+      if (path->size() < 2)
+         continue;
+
+      // check start (better match exactly, or we might stepping back?)
+      astar_node* first = path->front();
+      if (first->Row != S->Row || first->Col != S->Col)
+         continue;
+
+      // check end (has small tolerance)
+      astar_node* last = path->back();
+      if (abs(last->Row - E->Row) > PATHCACHETOLERANCE ||
+          abs(last->Col - E->Col) > PATHCACHETOLERANCE)
+          continue;
+
+      // match! now remove first, so we also match on next step
+      path->pop_front();
+
+      // get the next step endpoint
+      astar_node* next = path->front();
+
+      // make sure we can still move to this next endpoint (cares for moved objects!)
+      // note: if objects block a cached path, the path will still be walked until the block occurs!
+      // to improve this revalidate the whole path from the first to the last node here
+	  if (!BSPCanMoveInRoom(Room, &first->Location, &next->Location, ObjectID, false, &blockWall, false))
+         continue;
+
+      // for diagonal moves mark to be long step (required for timer elapse)
+      if (abs(first->Col - next->Col) &&
+          abs(first->Row - next->Row))
+      {
+         *Flags |= ESTATE_LONG_STEP;
+      }
+      else
+         *Flags &= ~ESTATE_LONG_STEP;
+
+      // set step endpoint
+      *P = next->Location;
+
+	  // cache hit
+      return true;
+   }
+   
+   // no cache hit
+   return false;
+}
+#endif
 
 bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID)
 {
@@ -532,6 +617,14 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    astar_node* startnode = &Room->Astar.Grid[startrow][startcol];
    Room->Astar.EndNode = &Room->Astar.Grid[endrow][endcol];
 
+   /**********************************************************************/
+#if PATHCACHEENABLED
+   // first try path cache lookup
+   if (AStarGetStepFromCache(Room, startnode, Room->Astar.EndNode, P, Flags, ObjectID))
+      return true;
+#endif
+   /**********************************************************************/
+
    // init the astar struct
    Room->Astar.LastNode = NULL;
    Room->Astar.ObjectID = ObjectID;
@@ -554,21 +647,47 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
 
    //AStarWriteGridToFile(Room);
    //AStarWriteHeapToFile(Room);
+
    /**********************************************************************/
 
-   // now let's walk back our parent pointers starting from the LastNode
-   // this chain represents the path (if it was unreachable, it's null)
-   astar_node* parent = Room->Astar.LastNode;
-   while (parent && parent->Data->parent != startnode)
-      parent = parent->Data->parent;
-
    // unreachable
-   if (!parent)
+   if (!Room->Astar.LastNode)
       return false;
-	
+
+#if PATHCACHEENABLED
+   // check for resetting nextpathidx
+   if (Room->Astar.NextPathIdx >= PATHCACHESIZE)
+      Room->Astar.NextPathIdx = 0;
+
+   // get path from cache and clear it
+   astar_path* path = Room->Astar.Paths[Room->Astar.NextPathIdx];
+   Room->Astar.NextPathIdx++;
+
+   // clear old cached path
+   path->clear();
+#else
+   // use a temporary ::std:list
+   astar_path _path;
+   astar_path* path = &_path;
+#endif
+
+   // walk back parent pointers from lastnode (=path)
+   astar_node* node = Room->Astar.LastNode;
+   while (node)
+   {
+	   path->push_front(node);
+	   node = node->Data->parent;
+   }
+
+   // not interested in first one (=startnode)
+   path->pop_front();
+
+   // this is the next one
+   node = path->front();
+
    // for diagonal moves mark to be long step (required for timer elapse)
-   if (abs(parent->Col - startnode->Col) &&
-       abs(parent->Row - startnode->Row))
+   if (abs(node->Col - startnode->Col) &&
+	   abs(node->Row - startnode->Row))
    {
       *Flags |= ESTATE_LONG_STEP;
    }
@@ -576,7 +695,7 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
       *Flags &= ~ESTATE_LONG_STEP;
 
    // set step endpoint
-   *P = parent->Location;
+   *P = node->Location;
 
    return true;
 }

@@ -9,15 +9,19 @@
 * astar.h:
 */
 
+#include <list>
+
 #ifndef _ASTAR_H
 #define _ASTAR_H
 
-#define EDGESCACHEENABLED 1
-
-#define CLOSEENOUGHDIST   3
-#define DESTBLOCKIGNORE   3
-#define ASTARENABLED      1
-#define NUMNEIGHBOURS     8
+#define EDGESCACHEENABLED  1
+#define PATHCACHEENABLED   1
+#define PATHCACHETOLERANCE 3
+#define PATHCACHESIZE      16
+#define CLOSEENOUGHDIST    3
+#define DESTBLOCKIGNORE    3
+#define ASTARENABLED       1
+#define NUMNEIGHBOURS      8
 
 #define LCHILD(x) (2 * x + 1)
 #define RCHILD(x) (2 * x + 2)
@@ -68,15 +72,27 @@ typedef struct astar_node
    BspLeaf*         Leaf;
    astar_node_data* Data;
    astar_node*      Neighbours[NUMNEIGHBOURS];
+#if EDGESCACHEENABLED
    unsigned short*  Edges;
+#endif
 } astar_node;
+
+class astar_path : public ::std::list<astar_node*>
+{
+};
 
 typedef struct astar
 {
    astar_node_data* NodesData;
    int              NodesDataSize;
+#if EDGESCACHEENABLED
    unsigned short*  EdgesCache;
    int              EdgesCacheSize;
+#endif
+#if PATHCACHEENABLED
+   astar_path*      Paths[PATHCACHESIZE];
+   unsigned int     NextPathIdx;
+#endif
    astar_node**     Grid;
    astar_node*      EndNode;
    astar_node*      LastNode;
@@ -86,7 +102,13 @@ typedef struct astar
 
 void AStarGenerateGrid(room_type* Room);
 void AStarFreeGrid(room_type* Room);
-void AStarClearEdgesCache(room_type* Room);
 bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
+
+#if EDGESCACHEENABLED
+void AStarClearEdgesCache(room_type* Room);
+#endif
+#if PATHCACHEENABLED
+void AStarClearPathCache(room_type* Room);
+#endif
 
 #endif /*#ifndef _ASTAR_H */

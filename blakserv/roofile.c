@@ -759,9 +759,14 @@ void BSPChangeTexture(room_type* Room, unsigned int ServerID, unsigned short New
       }
    }
 
-   // must invalidate cached astar edges
+   // must invalidate astar caches
 #if ASTARENABLED
+#if EDGESCACHEENABLED
    AStarClearEdgesCache(Room);
+#endif
+#if PATHCACHEENABLED
+   AStarClearPathCache(Room);
+#endif
 #endif
 }
 
@@ -794,9 +799,14 @@ void BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Hei
       }
    }
 
-   // must invalidate cached astar edges
+   // must invalidate astar caches
 #if ASTARENABLED
+#if EDGESCACHEENABLED
    AStarClearEdgesCache(Room);
+#endif
+#if PATHCACHEENABLED
+   AStarClearPathCache(Room);
+#endif
 #endif
 }
 
