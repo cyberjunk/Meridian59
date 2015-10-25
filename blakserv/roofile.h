@@ -212,6 +212,15 @@ typedef struct room_type
    unsigned short SectorsCount;
 
    astar Astar;
+
+#if EDGESCACHEENABLED
+   unsigned short*  EdgesCache;
+   int              EdgesCacheSize;
+#endif
+#if PATHCACHEENABLED
+   astar_path*      Paths[PATHCACHESIZE];
+   unsigned int     NextPathIdx;
+#endif
 } room_type;
 #pragma endregion
 

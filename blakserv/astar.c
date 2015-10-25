@@ -411,10 +411,10 @@ void AStarGenerateGrid(room_type* Room)
    /**********************************************************************/
 #if EDGESCACHEENABLED
    // allocate memory to cache edges (BSP queries)
-   Room->Astar.EdgesCacheSize = Room->colshighres * Room->rowshighres * sizeof(unsigned short);
+   Room->EdgesCacheSize = Room->colshighres * Room->rowshighres * sizeof(unsigned short);
 
-   Room->Astar.EdgesCache = (unsigned short*)AllocateMemory(
-	   MALLOC_ID_ASTAR, Room->Astar.EdgesCacheSize);
+   Room->EdgesCache = (unsigned short*)AllocateMemory(
+	   MALLOC_ID_ASTAR, Room->EdgesCacheSize);
 
    AStarClearEdgesCache(Room);
 #endif
@@ -422,7 +422,7 @@ void AStarGenerateGrid(room_type* Room)
 #if PATHCACHEENABLED
    // setup path cache
    for (int i = 0; i < PATHCACHESIZE; i++)  
-      Room->Astar.Paths[i] = new astar_path();
+      Room->Paths[i] = new astar_path();
 #endif
    /**********************************************************************/
 
@@ -460,7 +460,7 @@ void AStarGenerateGrid(room_type* Room)
          node->Data = &Room->Astar.NodesData[idx];
 #if EDGESCACHEENABLED
          // setup reference to edgesdata in edgescache
-         node->Edges = &Room->Astar.EdgesCache[idx];
+         node->Edges = &Room->EdgesCache[idx];
 #endif
          // setup neighbour pointers
          int r, c;
@@ -508,13 +508,13 @@ void AStarFreeGrid(room_type* Room)
 
 #if EDGESCACHEENABLED
    // free edgescache mem
-   FreeMemory(MALLOC_ID_ASTAR, Room->Astar.EdgesCache, Room->Astar.EdgesCacheSize);
+   FreeMemory(MALLOC_ID_ASTAR, Room->EdgesCache, Room->EdgesCacheSize);
 #endif
 
 #if PATHCACHEENABLED
    // free pathes list allocations
    for (int i = 0; i < PATHCACHESIZE; i++)
-      delete Room->Astar.Paths[i];
+      delete Room->Paths[i];
 #endif
 
    // free each row mem
@@ -528,7 +528,7 @@ void AStarFreeGrid(room_type* Room)
 #if EDGESCACHEENABLED
 void AStarClearEdgesCache(room_type* Room)
 {
-   ZeroMemory(Room->Astar.EdgesCache, Room->Astar.EdgesCacheSize);
+   ZeroMemory(Room->EdgesCache, Room->EdgesCacheSize);
 }
 #endif
 
@@ -536,7 +536,7 @@ void AStarClearEdgesCache(room_type* Room)
 void AStarClearPathCache(room_type* Room)
 {
    for (int i = 0; i < PATHCACHESIZE; i++)
-      Room->Astar.Paths[i]->clear();
+      Room->Paths[i]->clear();
 }
 
 bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P, unsigned int* Flags, int ObjectID)
@@ -545,7 +545,7 @@ bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P,
 
    for (int i = 0; i < PATHCACHESIZE; i++)
    {
-      astar_path* path = Room->Astar.Paths[i];
+      astar_path* path = Room->Paths[i];
 
       // a valid path would have two entries
       if (path->size() < 2)
@@ -656,12 +656,12 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
 
 #if PATHCACHEENABLED
    // check for resetting nextpathidx
-   if (Room->Astar.NextPathIdx >= PATHCACHESIZE)
-      Room->Astar.NextPathIdx = 0;
+   if (Room->NextPathIdx >= PATHCACHESIZE)
+      Room->NextPathIdx = 0;
 
    // get path from cache and clear it
-   astar_path* path = Room->Astar.Paths[Room->Astar.NextPathIdx];
-   Room->Astar.NextPathIdx++;
+   astar_path* path = Room->Paths[Room->NextPathIdx];
+   Room->NextPathIdx++;
 
    // clear old cached path
    path->clear();

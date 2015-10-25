@@ -85,14 +85,6 @@ typedef struct astar
 {
    astar_node_data* NodesData;
    int              NodesDataSize;
-#if EDGESCACHEENABLED
-   unsigned short*  EdgesCache;
-   int              EdgesCacheSize;
-#endif
-#if PATHCACHEENABLED
-   astar_path*      Paths[PATHCACHESIZE];
-   unsigned int     NextPathIdx;
-#endif
    astar_node**     Grid;
    astar_node*      EndNode;
    astar_node*      LastNode;
