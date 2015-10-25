@@ -213,6 +213,7 @@ typedef struct room_type
 
    astar Astar;
 
+   astar_node**     Grid;
 #if EDGESCACHEENABLED
    unsigned short*  EdgesCache;
    int              EdgesCacheSize;

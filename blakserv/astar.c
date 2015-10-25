@@ -231,7 +231,7 @@ __inline void AStarAddBlockers(room_type *Room)
             if (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres)
                continue;
 
-            astar_node* node = &Room->Astar.Grid[r][c];
+            astar_node* node = &Room->Grid[r][c];
             node->Data->isBlocked = true;
          }
       }
@@ -387,7 +387,7 @@ void AStarWriteGridToFile(room_type* Room)
          sprintf(rowstring, "Row %3i- ", row);
          for (int col = 0; col < cols; col++)
          {
-            sprintf(rowstring, "%s|%7.3f|", rowstring, Room->Astar.Grid[row][col].Data->combined);
+            sprintf(rowstring, "%s|%7.3f|", rowstring, Room->Grid[row][col].Data->combined);
          }
          sprintf(rowstring, "%s \n", rowstring);
          fputs(rowstring, fp);
@@ -427,12 +427,12 @@ void AStarGenerateGrid(room_type* Room)
    /**********************************************************************/
 
    // allocate memory for the persistent nodesinfo (typical 2d array by **)
-   Room->Astar.Grid = (astar_node**)AllocateMemory(
+   Room->Grid = (astar_node**)AllocateMemory(
       MALLOC_ID_ASTAR, Room->rowshighres * sizeof(astar_node*));
 
    // allocate rows
    for (int i = 0; i < Room->rowshighres; i++)
-      Room->Astar.Grid[i] = (astar_node*)AllocateMemory(
+      Room->Grid[i] = (astar_node*)AllocateMemory(
 	     MALLOC_ID_ASTAR, Room->colshighres * sizeof(astar_node));
 
    /**********************************************************************/
@@ -442,7 +442,7 @@ void AStarGenerateGrid(room_type* Room)
    {
 	  for (int j = 0; j < Room->colshighres; j++)
 	  {
-         astar_node* node = &Room->Astar.Grid[i][j];
+         astar_node* node = &Room->Grid[i][j];
          float f1, f2, f3;
          node->Row = i;
          node->Col = j;
@@ -468,35 +468,35 @@ void AStarGenerateGrid(room_type* Room)
          // N
          r = node->Row - 1;
          c = node->Col + 0;
-         node->Neighbours[0] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[0] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // NE
          r = node->Row - 1;
          c = node->Col + 1;
-         node->Neighbours[1] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[1] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // E
          r = node->Row + 0;
          c = node->Col + 1;
-         node->Neighbours[2] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[2] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // SE
          r = node->Row + 1;
          c = node->Col + 1;
-         node->Neighbours[3] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[3] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // S
          r = node->Row + 1;
          c = node->Col + 0;
-         node->Neighbours[4] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[4] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // SW
          r = node->Row + 1;
          c = node->Col - 1;
-         node->Neighbours[5] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[5] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // W
          r = node->Row + 0;
          c = node->Col - 1;
-         node->Neighbours[6] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[6] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // NW
          r = node->Row - 1;
          c = node->Col - 1;
-         node->Neighbours[7] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Astar.Grid[r][c];
+         node->Neighbours[7] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
       }
    }
 }
@@ -519,10 +519,10 @@ void AStarFreeGrid(room_type* Room)
 
    // free each row mem
    for (int i = 0; i < Room->rowshighres; i++)
-      FreeMemory(MALLOC_ID_ASTAR, Room->Astar.Grid[i], Room->colshighres * sizeof(astar_node));
+      FreeMemory(MALLOC_ID_ASTAR, Room->Grid[i], Room->colshighres * sizeof(astar_node));
 
    // free rowsmem
-   FreeMemory(MALLOC_ID_ASTAR, Room->Astar.Grid, Room->rowshighres * sizeof(astar_node*));
+   FreeMemory(MALLOC_ID_ASTAR, Room->Grid, Room->rowshighres * sizeof(astar_node*));
 }
 
 #if EDGESCACHEENABLED
@@ -614,8 +614,8 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    /**********************************************************************/
 
    // get start and endnode
-   astar_node* startnode = &Room->Astar.Grid[startrow][startcol];
-   Room->Astar.EndNode = &Room->Astar.Grid[endrow][endcol];
+   astar_node* startnode = &Room->Grid[startrow][startcol];
+   Room->Astar.EndNode = &Room->Grid[endrow][endcol];
 
    /**********************************************************************/
 #if PATHCACHEENABLED

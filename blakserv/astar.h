@@ -85,7 +85,6 @@ typedef struct astar
 {
    astar_node_data* NodesData;
    int              NodesDataSize;
-   astar_node**     Grid;
    astar_node*      EndNode;
    astar_node*      LastNode;
    int              ObjectID;
