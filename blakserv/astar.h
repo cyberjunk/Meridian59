@@ -23,6 +23,10 @@
 #define ASTARENABLED       1
 #define NUMNEIGHBOURS      8
 
+// biggest known grid so far is desertshore3.roo
+// having 391.680 squares.
+#define NODESDATASQUARES   1024 * 1024  
+
 #define LCHILD(x) (2 * x + 1)
 #define RCHILD(x) (2 * x + 2)
 #define PARENT(x) ((x-1) / 2)
@@ -85,12 +89,16 @@ typedef struct astar
 {
    astar_node_data* NodesData;
    int              NodesDataSize;
+   astar_node*      StartNode;
    astar_node*      EndNode;
    astar_node*      LastNode;
    int              ObjectID;
    int              HeapSize;
+   room_type*       Room;
 } astar;
 
+void AStarInit();
+void AStarShutdown();
 void AStarGenerateGrid(room_type* Room);
 void AStarFreeGrid(room_type* Room);
 bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);

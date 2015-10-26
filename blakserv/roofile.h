@@ -211,8 +211,6 @@ typedef struct room_type
    Sector*        Sectors;
    unsigned short SectorsCount;
 
-   astar Astar;
-
    astar_node**     Grid;
 #if EDGESCACHEENABLED
    unsigned short*  EdgesCache;
