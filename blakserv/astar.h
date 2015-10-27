@@ -25,7 +25,9 @@
 
 // biggest known grid so far is desertshore3.roo
 // having 391.680 squares.
-#define NODESDATASQUARES   1024 * 1024  
+#define MAXGRIDROWS        1024
+#define MAXGRIDCOLS        1024
+#define NODESDATASQUARES   MAXGRIDROWS * MAXGRIDCOLS  
 
 #define LCHILD(x) (2 * x + 1)
 #define RCHILD(x) (2 * x + 2)
@@ -68,13 +70,18 @@ typedef struct astar_node_data
    bool        isBlocked;
 } astar_node_data;
 
-typedef struct astar_node
+typedef struct astar_node_meta
 {
    int              Row;
    int              Col;
    V2               Location;
-   BspLeaf*         Leaf;
+} astar_node_meta;
+
+typedef struct astar_node
+{
+   astar_node_meta* Meta;
    astar_node_data* Data;
+   BspLeaf*         Leaf;
    astar_node*      Neighbours[NUMNEIGHBOURS];
 #if EDGESCACHEENABLED
    unsigned short*  Edges;
@@ -89,6 +96,7 @@ typedef struct astar
 {
    astar_node_data* NodesData;
    int              NodesDataSize;
+   astar_node_meta** Grid;
    astar_node*      StartNode;
    astar_node*      EndNode;
    astar_node*      LastNode;

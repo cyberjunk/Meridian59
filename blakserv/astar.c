@@ -214,8 +214,8 @@ __inline void AStarAddBlockers()
       int col = (int)roundf(b->Position.X / 256.0f);
 	  
       // Don't add blockers at the target coords.
-      if (abs(row - AStar.EndNode->Row) < DESTBLOCKIGNORE &&
-          abs(col - AStar.EndNode->Col) < DESTBLOCKIGNORE)
+      if (abs(row - AStar.EndNode->Meta->Row) < DESTBLOCKIGNORE &&
+          abs(col - AStar.EndNode->Meta->Col) < DESTBLOCKIGNORE)
       {
          b = b->Next;
          continue;
@@ -254,7 +254,7 @@ __inline bool AStarCanWalkEdge(astar_node* Node, astar_node* Neighbour, unsigned
    if (!knows)
    {
       // bsp query
-      can = BSPCanMoveInRoom(AStar.Room, &Node->Location, &Neighbour->Location, AStar.ObjectID, false, &blockWall, true);
+      can = BSPCanMoveInRoom(AStar.Room, &Node->Meta->Location, &Neighbour->Meta->Location, AStar.ObjectID, false, &blockWall, true);
 
       // save to cache
       *Node->Edges |= (can) ? CanVal : KnowsVal;
@@ -267,7 +267,7 @@ __inline bool AStarCanWalkEdge(astar_node* Node, astar_node* Neighbour, unsigned
    return can;
 
 #else
-   return BSPCanMoveInRoom(AStar.Room, &Node->Location, &Neighbour->Location, AStar.ObjectID, false, &blockWall, true);
+   return BSPCanMoveInRoom(AStar.Room, &Node->Meta->Location, &Neighbour->Meta->Location, AStar.ObjectID, false, &blockWall, true);
 #endif
 }
 
@@ -285,8 +285,8 @@ __inline void AStarProcessNeighbour(astar_node* Node, astar_node* Neighbour, flo
    // need to do this only once
    if (Neighbour->Data->heuristic == 0.0f)
    {
-      float dx = (float)abs(Neighbour->Col - AStar.EndNode->Col);
-      float dy = (float)abs(Neighbour->Row - AStar.EndNode->Row);
+      float dx = (float)abs(Neighbour->Meta->Col - AStar.EndNode->Meta->Col);
+      float dy = (float)abs(Neighbour->Meta->Row - AStar.EndNode->Meta->Row);
 
       // octile-distance
       Neighbour->Data->heuristic =
@@ -343,8 +343,8 @@ __inline bool AStarProcessFirst()
       return false;
 
    // close enough, we're done, path found
-   if (abs(node->Col - endNode->Col) < CLOSEENOUGHDIST &&
-       abs(node->Row - endNode->Row) < CLOSEENOUGHDIST)
+   if (abs(node->Meta->Col - endNode->Meta->Col) < CLOSEENOUGHDIST &&
+       abs(node->Meta->Row - endNode->Meta->Row) < CLOSEENOUGHDIST)
    {
       AStar.LastNode = node;
       return false;
@@ -403,8 +403,7 @@ void AStarWriteGridToFile(room_type* Room)
 
 void AStarGenerateGrid(room_type* Room)
 {
-   int squares = Room->colshighres * Room->rowshighres;
-   if (squares > NODESDATASQUARES)  
+   if (Room->colshighres > MAXGRIDCOLS || Room->rowshighres > MAXGRIDROWS)  
       eprintf("ALERT!! You tried to load a room with a grid-size beyond allowed limits! AStar will fail.");
 
    /**********************************************************************/
@@ -440,67 +439,64 @@ void AStarGenerateGrid(room_type* Room)
    // setup all squares
    for (int i = 0; i < Room->rowshighres; i++)
    {
+	  int row = (i < MAXGRIDROWS) ? i : 0;
+
 	  for (int j = 0; j < Room->colshighres; j++)
 	  {
-         astar_node* node = &Room->Grid[i][j];
-         float f1, f2, f3;
-         node->Row = i;
-         node->Col = j;
+         int col = (j < MAXGRIDCOLS) ? j : 0;	
+         int idx1 = row*Room->colshighres + col;
+         int idx2 = i*Room->colshighres + j;
 
-         // floatingpoint coordinates of the center of the square in ROO fineness (for queries)
-         node->Location.X = j * 256.0f;// +128.0f;
-         node->Location.Y = i * 256.0f;// +128.0f;
-
-         // mark if this square is inside or outside of room
-         BSPGetHeight(Room, &node->Location, &f1, &f2, &f3, &node->Leaf);
-
-         int idx = i*Room->colshighres + j;
-
-         // prevent setting up a data-pointer into invalid data mem
-         // instead map to first datanode, see error log in AStarGenerateGrid
-         if (idx >= NODESDATASQUARES)
-            idx = 0;
+		 astar_node* node = &Room->Grid[i][j];
 
          // setup reference to data (costs etc.) in erasable mem area
-         node->Data = &AStar.NodesData[idx];
+         node->Data = &AStar.NodesData[idx1];
+		 node->Meta = &AStar.Grid[row][col];
+
 #if EDGESCACHEENABLED
          // setup reference to edgesdata in edgescache
-         node->Edges = &Room->EdgesCache[idx];
+         node->Edges = &Room->EdgesCache[idx2];
 #endif
-         // setup neighbour pointers
-         int r, c;
+
+		 float f1, f2, f3;
+
+		 // mark if this square is inside or outside of room
+		 BSPGetHeight(Room, &node->Meta->Location, &f1, &f2, &f3, &node->Leaf);
+
+		 // setup neighbour pointers
+		 int r, c;
 
          // N
-         r = node->Row - 1;
-         c = node->Col + 0;
+         r = node->Meta->Row - 1;
+         c = node->Meta->Col + 0;
          node->Neighbours[0] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // NE
-         r = node->Row - 1;
-         c = node->Col + 1;
+         r = node->Meta->Row - 1;
+         c = node->Meta->Col + 1;
          node->Neighbours[1] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // E
-         r = node->Row + 0;
-         c = node->Col + 1;
+         r = node->Meta->Row + 0;
+         c = node->Meta->Col + 1;
          node->Neighbours[2] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // SE
-         r = node->Row + 1;
-         c = node->Col + 1;
+         r = node->Meta->Row + 1;
+         c = node->Meta->Col + 1;
          node->Neighbours[3] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // S
-         r = node->Row + 1;
-         c = node->Col + 0;
+         r = node->Meta->Row + 1;
+         c = node->Meta->Col + 0;
          node->Neighbours[4] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // SW
-         r = node->Row + 1;
-         c = node->Col - 1;
+         r = node->Meta->Row + 1;
+         c = node->Meta->Col - 1;
          node->Neighbours[5] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // W
-         r = node->Row + 0;
-         c = node->Col - 1;
+		 r = node->Meta->Row + 0;
+         c = node->Meta->Col - 1;
          node->Neighbours[6] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
          // NW
-         r = node->Row - 1;
-         c = node->Col - 1;
+         r = node->Meta->Row - 1;
+         c = node->Meta->Col - 1;
          node->Neighbours[7] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
       }
    }
@@ -555,13 +551,13 @@ bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P,
 
       // check start (better match exactly, or we might stepping back?)
       astar_node* first = path->front();
-      if (first->Row != S->Row || first->Col != S->Col)
+      if (first->Meta->Row != S->Meta->Row || first->Meta->Col != S->Meta->Col)
          continue;
 
       // check end (has small tolerance)
       astar_node* last = path->back();
-      if (abs(last->Row - E->Row) > PATHCACHETOLERANCE ||
-          abs(last->Col - E->Col) > PATHCACHETOLERANCE)
+      if (abs(last->Meta->Row - E->Meta->Row) > PATHCACHETOLERANCE ||
+          abs(last->Meta->Col - E->Meta->Col) > PATHCACHETOLERANCE)
           continue;
 
       // match! now remove first, so we also match on next step
@@ -573,12 +569,12 @@ bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P,
       // make sure we can still move to this next endpoint (cares for moved objects!)
       // note: if objects block a cached path, the path will still be walked until the block occurs!
       // to improve this revalidate the whole path from the first to the last node here
-	  if (!BSPCanMoveInRoom(Room, &first->Location, &next->Location, ObjectID, false, &blockWall, false))
+	  if (!BSPCanMoveInRoom(Room, &first->Meta->Location, &next->Meta->Location, ObjectID, false, &blockWall, false))
          continue;
 
       // for diagonal moves mark to be long step (required for timer elapse)
-      if (abs(first->Col - next->Col) &&
-          abs(first->Row - next->Row))
+      if (abs(first->Meta->Col - next->Meta->Col) &&
+          abs(first->Meta->Row - next->Meta->Row))
       {
          *Flags |= ESTATE_LONG_STEP;
       }
@@ -586,7 +582,7 @@ bool AStarGetStepFromCache(room_type* Room, astar_node* S, astar_node* E, V2* P,
          *Flags &= ~ESTATE_LONG_STEP;
 
       // set step endpoint
-      *P = next->Location;
+      *P = next->Meta->Location;
 
 	  // cache hit
       return true;
@@ -632,6 +628,7 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    /**********************************************************************/
 
    // prepare non-persistent astar grid data memory
+   // todo: clear only required area?
    ZeroMemory(AStar.NodesData, AStar.NodesDataSize);
 
    /**********************************************************************/
@@ -687,8 +684,8 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    node = path->front();
 
    // for diagonal moves mark to be long step (required for timer elapse)
-   if (abs(node->Col - AStar.StartNode->Col) &&
-	   abs(node->Row - AStar.StartNode->Row))
+   if (abs(node->Meta->Col - AStar.StartNode->Meta->Col) &&
+	   abs(node->Meta->Row - AStar.StartNode->Meta->Row))
    {
       *Flags |= ESTATE_LONG_STEP;
    }
@@ -696,7 +693,7 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
       *Flags &= ~ESTATE_LONG_STEP;
 
    // set step endpoint
-   *P = node->Location;
+   *P = node->Meta->Location;
 
    return true;
 }
@@ -705,10 +702,8 @@ void AStarInit()
 {
    // memory for astar data erased with each query
    AStar.NodesDataSize = NODESDATASQUARES * sizeof(astar_node_data);
-
-   // allocate memory for all nodesdata (cleaned for each calculation)
    AStar.NodesData = (astar_node_data*)AllocateMemory(
-      MALLOC_ID_ASTAR, AStar.NodesDataSize);
+	   MALLOC_ID_ASTAR, AStar.NodesDataSize);
 
    AStar.StartNode = NULL;
    AStar.EndNode   = NULL;
@@ -716,11 +711,43 @@ void AStarInit()
    AStar.ObjectID = 0;
    AStar.HeapSize = 0;    
    AStar.Room = NULL;
+
+   // allocate memory for the persistent grid
+   AStar.Grid = (astar_node_meta**)AllocateMemory(MALLOC_ID_ASTAR, MAXGRIDROWS * sizeof(astar_node_meta*));
+
+   // allocate rows
+   for (int i = 0; i < MAXGRIDROWS; i++)
+	   AStar.Grid[i] = (astar_node_meta*)AllocateMemory(MALLOC_ID_ASTAR, MAXGRIDCOLS * sizeof(astar_node_meta));
+
+   // setup all squares
+   for (int i = 0; i < MAXGRIDROWS; i++)
+   {
+	   for (int j = 0; j < MAXGRIDCOLS; j++)
+	   {
+		   int idx = i*MAXGRIDCOLS + j;
+
+		   astar_node_meta* node = &AStar.Grid[i][j];
+
+		   // set row/col
+		   node->Row = i;
+		   node->Col = j;
+
+		   // floatingpoint coordinates of the center of the square in ROO fineness (for queries)
+		   node->Location.X = j * 256.0f;// +128.0f;
+		   node->Location.Y = i * 256.0f;// +128.0f;
+	   }
+   }
 }
 
 void AStarShutdown()
 {
-   // free workdata mem
    FreeMemory(MALLOC_ID_ASTAR, AStar.NodesData, AStar.NodesDataSize);
+   
+   // free each meta grid row
+   for (int i = 0; i < MAXGRIDROWS; i++)
+	   FreeMemory(MALLOC_ID_ASTAR, AStar.Grid[i], MAXGRIDCOLS * sizeof(astar_node_meta));
+
+   // free meta grid
+   FreeMemory(MALLOC_ID_ASTAR, AStar.Grid, MAXGRIDROWS * sizeof(astar_node_meta*));
 }
 #pragma endregion
