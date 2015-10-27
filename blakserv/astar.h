@@ -82,7 +82,6 @@ typedef struct astar_node
    astar_node_meta* Meta;
    astar_node_data* Data;
    BspLeaf*         Leaf;
-   astar_node*      Neighbours[NUMNEIGHBOURS];
 #if EDGESCACHEENABLED
    unsigned short*  Edges;
 #endif

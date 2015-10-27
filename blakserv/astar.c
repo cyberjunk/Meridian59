@@ -352,17 +352,60 @@ __inline bool AStarProcessFirst()
 
    /****************************************************************/
 
+   int r, c;
+   astar_node* n;
+
    // straight neighbours
-   AStarProcessNeighbour(node, node->Neighbours[0], COST, EDGECACHE_KNOWS_N, EDGECACHE_CAN_N);
-   AStarProcessNeighbour(node, node->Neighbours[2], COST, EDGECACHE_KNOWS_E, EDGECACHE_CAN_E);
-   AStarProcessNeighbour(node, node->Neighbours[4], COST, EDGECACHE_KNOWS_S, EDGECACHE_CAN_S);
-   AStarProcessNeighbour(node, node->Neighbours[6], COST, EDGECACHE_KNOWS_W, EDGECACHE_CAN_W);
+
+   // n
+   r = node->Meta->Row - 1;
+   c = node->Meta->Col + 0;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
+   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_N, EDGECACHE_CAN_N);
+   
+   // e
+   r = node->Meta->Row + 0;
+   c = node->Meta->Col + 1;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
+   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_E, EDGECACHE_CAN_E);
+   
+   // s
+   r = node->Meta->Row + 1;
+   c = node->Meta->Col + 0;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c]; 
+   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_S, EDGECACHE_CAN_S);
+
+   // w
+   r = node->Meta->Row + 0;
+   c = node->Meta->Col - 1;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
+   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_W, EDGECACHE_CAN_W);
 
    // diagonal neighbours
-   AStarProcessNeighbour(node, node->Neighbours[1], COST_DIAG, EDGECACHE_KNOWS_NE, EDGECACHE_CAN_NE);
-   AStarProcessNeighbour(node, node->Neighbours[3], COST_DIAG, EDGECACHE_KNOWS_SE, EDGECACHE_CAN_SE);
-   AStarProcessNeighbour(node, node->Neighbours[5], COST_DIAG, EDGECACHE_KNOWS_SW, EDGECACHE_CAN_SW);
-   AStarProcessNeighbour(node, node->Neighbours[7], COST_DIAG, EDGECACHE_KNOWS_NW, EDGECACHE_CAN_NW);
+
+   // ne
+   r = node->Meta->Row - 1;
+   c = node->Meta->Col + 1;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
+   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_NE, EDGECACHE_CAN_NE);
+
+   // se
+   r = node->Meta->Row + 1;
+   c = node->Meta->Col + 1;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
+   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_SE, EDGECACHE_CAN_SE);
+
+   // sw
+   r = node->Meta->Row + 1;
+   c = node->Meta->Col - 1;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
+   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_SW, EDGECACHE_CAN_SW);
+
+   // nw
+   r = node->Meta->Row - 1;
+   c = node->Meta->Col - 1;
+   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
+   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_NW, EDGECACHE_CAN_NW);
 
    /****************************************************************/
 
@@ -462,42 +505,6 @@ void AStarGenerateGrid(room_type* Room)
 
 		 // mark if this square is inside or outside of room
 		 BSPGetHeight(Room, &node->Meta->Location, &f1, &f2, &f3, &node->Leaf);
-
-		 // setup neighbour pointers
-		 int r, c;
-
-         // N
-         r = node->Meta->Row - 1;
-         c = node->Meta->Col + 0;
-         node->Neighbours[0] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
-         // NE
-         r = node->Meta->Row - 1;
-         c = node->Meta->Col + 1;
-         node->Neighbours[1] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
-         // E
-         r = node->Meta->Row + 0;
-         c = node->Meta->Col + 1;
-         node->Neighbours[2] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
-         // SE
-         r = node->Meta->Row + 1;
-         c = node->Meta->Col + 1;
-         node->Neighbours[3] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
-         // S
-         r = node->Meta->Row + 1;
-         c = node->Meta->Col + 0;
-         node->Neighbours[4] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
-         // SW
-         r = node->Meta->Row + 1;
-         c = node->Meta->Col - 1;
-         node->Neighbours[5] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
-         // W
-		 r = node->Meta->Row + 0;
-         c = node->Meta->Col - 1;
-         node->Neighbours[6] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
-         // NW
-         r = node->Meta->Row - 1;
-         c = node->Meta->Col - 1;
-         node->Neighbours[7] = (r < 0 || c < 0 || r >= Room->rowshighres || c >= Room->colshighres) ? NULL : &Room->Grid[r][c];
       }
    }
 }
@@ -628,8 +635,8 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    /**********************************************************************/
 
    // prepare non-persistent astar grid data memory
-   // todo: clear only required area?
    ZeroMemory(AStar.NodesData, AStar.NodesDataSize);
+   //ZeroMemory(AStar.NodesData, Room->rowshighres * Room->colshighres * sizeof(astar_node_data));
 
    /**********************************************************************/
 
