@@ -24,25 +24,25 @@ astar AStar;
 
 #pragma region HEAP
 // refers to the i-th element on the heap
-#define HEAP(i) (AStar.NodesData[i].heapslot)
+#define HEAP(a, i) ((a)->NodesData[i].heapslot)
 
-__inline bool AStarHeapCheck(room_type* Room, int i)
+__inline bool AStarHeapCheck(astar* Astar, room_type* Room, int i)
 {
    int squares = Room->rowshighres * Room->colshighres;
 
    if (i >= squares)
       return true;
 
-   if (!HEAP(i))
+   if (!HEAP(Astar, i))
       return true;
 
-   float our = HEAP(i)->Data->combined;
+   float our = HEAP(Astar, i)->Data->combined;
    int lchild = LCHILD(i);
    int rchild = RCHILD(i);
 
    if (lchild < squares)
    {
-      astar_node* node = HEAP(lchild);
+      astar_node* node = HEAP(Astar, lchild);
       if (node)
       {
          if (node->Data->combined < our)
@@ -51,7 +51,7 @@ __inline bool AStarHeapCheck(room_type* Room, int i)
    }
    if (rchild < squares)
    {
-      astar_node* node = HEAP(rchild);
+      astar_node* node = HEAP(Astar, rchild);
       if (node)
       {
          if (node->Data->combined < our)
@@ -59,14 +59,14 @@ __inline bool AStarHeapCheck(room_type* Room, int i)
       }
    }
 
-   bool retval = AStarHeapCheck(Room, lchild);
+   bool retval = AStarHeapCheck(Astar, Room, lchild);
    if (!retval)
       return false;
 
-   return AStarHeapCheck(Room, rchild);
+   return AStarHeapCheck(Astar, Room, rchild);
 }
 
-__inline void AStarWriteHeapToFile(room_type* Room)
+__inline void AStarWriteHeapToFile(astar* Astar, room_type* Room)
 {
    int rows = Room->rowshighres;
    int cols = Room->colshighres;
@@ -87,7 +87,7 @@ __inline void AStarWriteHeapToFile(room_type* Room)
 
          for (int k = 0; k < rangesize; k++)
          {				
-            astar_node* node = AStar.NodesData[rangestart + k].heapslot;
+            astar_node* node = Astar->NodesData[rangestart + k].heapslot;
 
             if (node)
                sprintf(rowstring, "%s|%6.2f|", rowstring, node->Data->combined);
@@ -107,103 +107,103 @@ __inline void AStarWriteHeapToFile(room_type* Room)
    FreeMemory(MALLOC_ID_ROOM, rowstring, 60000);
 }
 
-__inline void AStarHeapSwap(int idx1, int idx2)
+__inline void AStarHeapSwap(astar* Astar, int idx1, int idx2)
 {
-   astar_node* node1 = HEAP(idx1);
-   astar_node* node2 = HEAP(idx2);	
-   HEAP(idx1) = node2;
-   HEAP(idx2) = node1;
+   astar_node* node1 = HEAP(Astar, idx1);
+   astar_node* node2 = HEAP(Astar, idx2);	
+   HEAP(Astar, idx1) = node2;
+   HEAP(Astar, idx2) = node1;
    node1->Data->heapindex = idx2;
    node2->Data->heapindex = idx1;
 }
 
-__inline void AStarHeapMoveUp(int Index)
+__inline void AStarHeapMoveUp(astar* Astar, int Index)
 {
    int i = Index;
-   while (i > 0 && HEAP(i)->Data->combined < HEAP(PARENT(i))->Data->combined)
+   while (i > 0 && HEAP(Astar, i)->Data->combined < HEAP(Astar, PARENT(i))->Data->combined)
    {
-      AStarHeapSwap(i, PARENT(i));
+      AStarHeapSwap(Astar, i, PARENT(i));
       i = PARENT(i);
    }
 }
 
-__inline void AStarHeapHeapify(int Index)
+__inline void AStarHeapHeapify(astar* Astar, int Index)
 {
    int i = Index;
    do 
    {
       int min = i;
-      if (HEAP(LCHILD(i)) && HEAP(LCHILD(i))->Data->combined < HEAP(min)->Data->combined)
+      if (HEAP(Astar, LCHILD(i)) && HEAP(Astar, LCHILD(i))->Data->combined < HEAP(Astar, min)->Data->combined)
          min = LCHILD(i);
-      if (HEAP(RCHILD(i)) && HEAP(RCHILD(i))->Data->combined < HEAP(min)->Data->combined)
+      if (HEAP(Astar, RCHILD(i)) && HEAP(Astar, RCHILD(i))->Data->combined < HEAP(Astar, min)->Data->combined)
          min = RCHILD(i);
       if (min == i)
          break;
-      AStarHeapSwap(i, min);
+      AStarHeapSwap(Astar, i, min);
       i = min;
    } 
    while (true);
 }
 
-__inline void AStarHeapInsert(astar_node* Node)
+__inline void AStarHeapInsert(astar* Astar, astar_node* Node)
 {
    // save index of this node
-   Node->Data->heapindex = AStar.HeapSize;
+   Node->Data->heapindex = Astar->HeapSize;
 
    // add node at the end
-   HEAP(Node->Data->heapindex) = Node;
+   HEAP(Astar, Node->Data->heapindex) = Node;
 
    // increment
-   AStar.HeapSize++;
+   Astar->HeapSize++;
 
    // push node up until in place
-   AStarHeapMoveUp(Node->Data->heapindex);
+   AStarHeapMoveUp(Astar, Node->Data->heapindex);
 }
 
-__inline void AStarHeapRemoveFirst()
+__inline void AStarHeapRemoveFirst(astar* Astar)
 {
-   int lastIdx = AStar.HeapSize - 1;
+   int lastIdx = Astar->HeapSize - 1;
 
    // no elements
    if (lastIdx < 0)
       return;
 
    // decrement size
-   AStar.HeapSize--;
+   Astar->HeapSize--;
 
    // more than 1
    if (lastIdx > 0)
    {
       // put last at root
-      AStarHeapSwap(0, lastIdx);
+      AStarHeapSwap(Astar, 0, lastIdx);
 
       // zero out the previous root at swapped slot
-      HEAP(lastIdx)->Data->heapindex = 0;
-      HEAP(lastIdx) = NULL;
+      HEAP(Astar, lastIdx)->Data->heapindex = 0;
+      HEAP(Astar, lastIdx) = NULL;
 
       // reorder tree
-      AStarHeapHeapify(0);
+      AStarHeapHeapify(Astar, 0);
    }
 
    // only one, clear head
    else
    {
-      HEAP(0)->Data->heapindex = 0;
-      HEAP(0) = NULL;
+      HEAP(Astar, 0)->Data->heapindex = 0;
+      HEAP(Astar, 0) = NULL;
    }
 }
 #pragma endregion
 
 #pragma region ASTAR 
-__inline void AStarAddBlockers()
+__inline void AStarAddBlockers(astar* Astar)
 {
    Blocker* b;
 	
-   b = AStar.Room->Blocker;
+   b = Astar->Room->Blocker;
    while (b)
    {
       // Don't add self.
-      if (b->ObjectID == AStar.ObjectID)
+      if (b->ObjectID == Astar->ObjectID)
       {
          b = b->Next;
          continue;
@@ -214,8 +214,8 @@ __inline void AStarAddBlockers()
       int col = (int)roundf(b->Position.X / 256.0f);
 	  
       // Don't add blockers at the target coords.
-      if (abs(row - AStar.EndNode->Meta->Row) < DESTBLOCKIGNORE &&
-          abs(col - AStar.EndNode->Meta->Col) < DESTBLOCKIGNORE)
+      if (abs(row - Astar->EndNode->Meta->Row) < DESTBLOCKIGNORE &&
+          abs(col - Astar->EndNode->Meta->Col) < DESTBLOCKIGNORE)
       {
          b = b->Next;
          continue;
@@ -231,10 +231,10 @@ __inline void AStarAddBlockers()
             int c = col + coloffset;
 
             // outside
-            if (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres)
+            if (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres)
                continue;
 
-            astar_node* node = &AStar.Room->Grid[r][c];
+            astar_node* node = &Astar->Room->Grid[r][c];
             node->Data->isBlocked = true;
          }
       }
@@ -242,7 +242,7 @@ __inline void AStarAddBlockers()
    }
 }
 
-__inline bool AStarCanWalkEdge(astar_node* Node, astar_node* Neighbour, unsigned short KnowsVal, unsigned short CanVal)
+__inline bool AStarCanWalkEdge(astar* Astar, astar_node* Node, astar_node* Neighbour, unsigned short KnowsVal, unsigned short CanVal)
 {
    Wall* blockWall;
 
@@ -254,7 +254,7 @@ __inline bool AStarCanWalkEdge(astar_node* Node, astar_node* Neighbour, unsigned
    if (!knows)
    {
       // bsp query
-      can = BSPCanMoveInRoom(AStar.Room, &Node->Meta->Location, &Neighbour->Meta->Location, AStar.ObjectID, false, &blockWall, true);
+      can = BSPCanMoveInRoom(Astar->Room, &Node->Meta->Location, &Neighbour->Meta->Location, Astar->ObjectID, false, &blockWall, true);
 
       // save to cache
       *Node->Edges |= (can) ? CanVal : KnowsVal;
@@ -267,26 +267,26 @@ __inline bool AStarCanWalkEdge(astar_node* Node, astar_node* Neighbour, unsigned
    return can;
 
 #else
-   return BSPCanMoveInRoom(AStar.Room, &Node->Meta->Location, &Neighbour->Meta->Location, AStar.ObjectID, false, &blockWall, true);
+   return BSPCanMoveInRoom(Astar->Room, &Node->Meta->Location, &Neighbour->Meta->Location, Astar->ObjectID, false, &blockWall, true);
 #endif
 }
 
-__inline void AStarProcessNeighbour(astar_node* Node, astar_node* Neighbour, float StepCost, unsigned short KnowsVal, unsigned short CanVal)
+__inline void AStarProcessNeighbour(astar* Astar, astar_node* Node, astar_node* Neighbour, float StepCost, unsigned short KnowsVal, unsigned short CanVal)
 {
    // skip any neighbour outside of grid or sector, already processed or blocked
    if (!Neighbour || !Neighbour->Leaf || Neighbour->Data->isInClosedList || Neighbour->Data->isBlocked)
       return;
 
    // can't walk edge from node to neighbour
-   if (!AStarCanWalkEdge(Node, Neighbour, KnowsVal, CanVal))
+   if (!AStarCanWalkEdge(Astar, Node, Neighbour, KnowsVal, CanVal))
       return;
 
    // heuristic (~ estimated distance from node to end)
    // need to do this only once
    if (Neighbour->Data->heuristic == 0.0f)
    {
-      float dx = (float)abs(Neighbour->Meta->Col - AStar.EndNode->Meta->Col);
-      float dy = (float)abs(Neighbour->Meta->Row - AStar.EndNode->Meta->Row);
+      float dx = (float)abs(Neighbour->Meta->Col - Astar->EndNode->Meta->Col);
+      float dy = (float)abs(Neighbour->Meta->Row - Astar->EndNode->Meta->Row);
 
       // octile-distance
       Neighbour->Data->heuristic =
@@ -306,7 +306,7 @@ __inline void AStarProcessNeighbour(astar_node* Node, astar_node* Neighbour, flo
       Neighbour->Data->combined = Neighbour->Data->cost + Neighbour->Data->heuristic;
 
       // add it sorted to the open list
-      AStarHeapInsert(Neighbour);
+      AStarHeapInsert(Astar, Neighbour);
    }
 
    // CASE 2)
@@ -327,16 +327,16 @@ __inline void AStarProcessNeighbour(astar_node* Node, astar_node* Neighbour, flo
          // reorder it upwards in the heap tree, don't care about downordering
          // since costs are lower and heuristic is always the same,
          // it's guaranteed to be moved up
-         AStarHeapMoveUp(Neighbour->Data->heapindex);
+         AStarHeapMoveUp(Astar, Neighbour->Data->heapindex);
       }
    }
 }
 
-__inline bool AStarProcessFirst()
+__inline bool AStarProcessFirst(astar* Astar)
 {
    // shortcuts
-   astar_node* node = HEAP(0);
-   astar_node* endNode = AStar.EndNode;
+   astar_node* node = HEAP(Astar, 0);
+   astar_node* endNode = Astar->EndNode;
 
    // openlist empty, unreachable
    if (!node)
@@ -346,7 +346,7 @@ __inline bool AStarProcessFirst()
    if (abs(node->Meta->Col - endNode->Meta->Col) < CLOSEENOUGHDIST &&
        abs(node->Meta->Row - endNode->Meta->Row) < CLOSEENOUGHDIST)
    {
-      AStar.LastNode = node;
+      Astar->LastNode = node;
       return false;
    }
 
@@ -360,52 +360,52 @@ __inline bool AStarProcessFirst()
    // n
    r = node->Meta->Row - 1;
    c = node->Meta->Col + 0;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
-   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_N, EDGECACHE_CAN_N);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST, EDGECACHE_KNOWS_N, EDGECACHE_CAN_N);
    
    // e
    r = node->Meta->Row + 0;
    c = node->Meta->Col + 1;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
-   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_E, EDGECACHE_CAN_E);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST, EDGECACHE_KNOWS_E, EDGECACHE_CAN_E);
    
    // s
    r = node->Meta->Row + 1;
    c = node->Meta->Col + 0;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c]; 
-   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_S, EDGECACHE_CAN_S);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST, EDGECACHE_KNOWS_S, EDGECACHE_CAN_S);
 
    // w
    r = node->Meta->Row + 0;
    c = node->Meta->Col - 1;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
-   AStarProcessNeighbour(node, n, COST, EDGECACHE_KNOWS_W, EDGECACHE_CAN_W);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST, EDGECACHE_KNOWS_W, EDGECACHE_CAN_W);
 
    // diagonal neighbours
 
    // ne
    r = node->Meta->Row - 1;
    c = node->Meta->Col + 1;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
-   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_NE, EDGECACHE_CAN_NE);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST_DIAG, EDGECACHE_KNOWS_NE, EDGECACHE_CAN_NE);
 
    // se
    r = node->Meta->Row + 1;
    c = node->Meta->Col + 1;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
-   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_SE, EDGECACHE_CAN_SE);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST_DIAG, EDGECACHE_KNOWS_SE, EDGECACHE_CAN_SE);
 
    // sw
    r = node->Meta->Row + 1;
    c = node->Meta->Col - 1;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
-   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_SW, EDGECACHE_CAN_SW);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST_DIAG, EDGECACHE_KNOWS_SW, EDGECACHE_CAN_SW);
 
    // nw
    r = node->Meta->Row - 1;
    c = node->Meta->Col - 1;
-   n = (r < 0 || c < 0 || r >= AStar.Room->rowshighres || c >= AStar.Room->colshighres) ? NULL : &AStar.Room->Grid[r][c];
-   AStarProcessNeighbour(node, n, COST_DIAG, EDGECACHE_KNOWS_NW, EDGECACHE_CAN_NW);
+   n = (r < 0 || c < 0 || r >= Astar->Room->rowshighres || c >= Astar->Room->colshighres) ? NULL : &Astar->Room->Grid[r][c];
+   AStarProcessNeighbour(Astar, node, n, COST_DIAG, EDGECACHE_KNOWS_NW, EDGECACHE_CAN_NW);
 
    /****************************************************************/
 
@@ -413,7 +413,7 @@ __inline bool AStarProcessFirst()
    node->Data->isInClosedList = true;
 
    // remove it from the open list
-   AStarHeapRemoveFirst();
+   AStarHeapRemoveFirst(Astar);
 
    return true;
 }
@@ -493,6 +493,7 @@ void AStarGenerateGrid(room_type* Room)
 		 astar_node* node = &Room->Grid[i][j];
 
          // setup reference to data (costs etc.) in erasable mem area
+         // todo: change away from AStar to param
          node->Data = &AStar.NodesData[idx1];
 		 node->Meta = &AStar.Grid[row][col];
 
@@ -641,14 +642,14 @@ bool AStarGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Fla
    /**********************************************************************/
 
    // mark nodes blocked by objects 
-   AStarAddBlockers();
+   AStarAddBlockers(&AStar);
 
    // insert startnode into heap-tree
-   AStarHeapInsert(AStar.StartNode);
+   AStarHeapInsert(&AStar, AStar.StartNode);
 
    // the algorithm finishes if we either hit a node close enough to endnode
    // or if there is no more entries in the open list (unreachable)
-   while (AStarProcessFirst()) {}
+   while (AStarProcessFirst(&AStar)) {}
 
    //AStarWriteGridToFile(Room);
    //AStarWriteHeapToFile(Room);
