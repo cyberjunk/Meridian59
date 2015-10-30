@@ -275,6 +275,11 @@ void InitMemory(void)
 
 memory_statistics * GetMemoryStats(void)
 {
+	// update current value from astar first
+	memory_stat.allocated[MALLOC_ID_ASTAR] = 0;
+	for (int i = 0; i < THREADSCOUNT; i++)
+		memory_stat.allocated[MALLOC_ID_ASTAR] += AStar[i].Memory;
+
 	return &memory_stat;
 }
 
@@ -282,6 +287,11 @@ int GetMemoryTotal(void)
 {
 	int i,total;
 	
+	// update current value from astar first
+	memory_stat.allocated[MALLOC_ID_ASTAR] = 0;
+	for (int i = 0; i < THREADSCOUNT; i++)
+		memory_stat.allocated[MALLOC_ID_ASTAR] += AStar[i].Memory;
+
 	total = 0;
 	
 	for (i=0;i<MALLOC_ID_NUM;i++)

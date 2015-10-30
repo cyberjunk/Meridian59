@@ -192,6 +192,7 @@ copy $(SolutionDir)bin\libcurl.dll $(SolutionDir)run\server</Command>
     <ClInclude Include="adminfn.h" />
     <ClInclude Include="apndfile.h" />
     <ClInclude Include="astar.h" />
+    <ClInclude Include="astar_classes.h" />
     <ClInclude Include="async.h" />
     <ClInclude Include="blakres.h" />
     <ClInclude Include="blakserv.h" />
@@ -233,6 +234,7 @@ copy $(SolutionDir)bin\libcurl.dll $(SolutionDir)run\server</Command>
     <ClInclude Include="nameid.h" />
     <ClInclude Include="object.h" />
     <ClInclude Include="parsecli.h" />
+    <ClInclude Include="queue.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="resync.h" />
     <ClInclude Include="roofile.h" />

@@ -50,13 +50,11 @@
 // value exactly expressable in KOD fineness units
 #define ROUNDROOTOKODFINENESS(a) FINENESSKODTOROO(roundf(FINENESSROOTOKOD(a)))
 
-// from blakston.khd, used in BSPGetNextStepTowards across calls
-#define ESTATE_LONG_STEP 0x00002000
-#define ESTATE_AVOIDING  0x00004000
-#define ESTATE_CLOCKWISE 0x00008000
-
 // from blakston.khd, used for monster that can move outside BSP tree
-#define MSTATE_MOVE_OUTSIDE_BSP 0x00100000
+#define MF_MOVE_OUTSIDE_BSP 0x00100000
+#define MF_LONG_STEP        0x00200000
+#define MF_AVOIDING         0x00400000
+#define MF_CLOCKWISE        0x00800000
 
 // query flags for BSPGetLocationInfo
 #define LIQ_GET_SECTORINFO           0x00000001
@@ -82,6 +80,17 @@
 /**************************************************************************************************************/
 /*                                          STRUCTS                                                           */
 /**************************************************************************************************************/
+
+// must match blakston.khd
+typedef enum MoveCallbackType
+{
+   MC_UNREACHABLE   = 0,
+   MC_STRAIGHTLINE  = 1,
+   MC_PATHFROMCACHE = 2,
+   MC_NEWPATH       = 3,
+   MC_HEURISTIC     = 4
+} MoveCallbackType;
+
 typedef struct BoundingBox2D
 {
    V2 Min;
@@ -211,15 +220,11 @@ typedef struct room_type
    Sector*        Sectors;
    unsigned short SectorsCount;
 
-   astar_node**     Grid;
-#if EDGESCACHEENABLED
-   unsigned short*  EdgesCache;
-   int              EdgesCacheSize;
-#endif
-#if PATHCACHEENABLED
-   astar_path*      Paths[PATHCACHESIZE];
-   unsigned int     NextPathIdx;
-#endif
+   astar_path*    Paths[PATHCACHESIZE];
+   unsigned int   NextPathIdx;
+
+   astar_nopath*  NoPaths[NOPATHCACHESIZE];
+   unsigned int   NextNoPathIdx;
 } room_type;
 #pragma endregion
 
@@ -234,13 +239,18 @@ void  BSPChangeTexture(room_type* Room, unsigned int ServerID, unsigned short Ne
 void  BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Height, float Speed);
 bool  BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigned int* ReturnFlags, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf);
 bool  BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P);
-bool  BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
+void  BSPGetStepTowards(room_type* Room, V2* S, V2* E, unsigned int Flags, int ObjectID);
+bool  BSPGetStepFromHeuristic(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
+bool  BSPGetStepFromPath(room_type* Room, astar_path* Path, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
+bool  BSPGetStepFromPathCache(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID);
 bool  BSPBlockerAdd(room_type* Room, int ObjectID, V2* P);
 bool  BSPBlockerMove(room_type* Room, int ObjectID, V2* P);
 bool  BSPBlockerRemove(room_type* Room, int ObjectID);
 void  BSPBlockerClear(room_type* Room);
-bool  BSPLoadRoom(char *fname, room_type *room);
-void  BSPFreeRoom(room_type *room);
+bool  BSPLoadRoom(char* fname, room_type* room, astar* Astar);
+void  BSPFreeRoom(room_type* room, astar* Astar);
+void  BSPInvokeMoveCallback(int ObjectID, int Type, unsigned int State, V2* P);
+void  BSPClearPath(astar_path* Path);
 #pragma endregion
 
 #endif
