@@ -8,36 +8,16 @@
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Candle is Flickerer
+Shirt is ShirtBase
+% Parent class contains all the information for Shirt.
 
 constants:
 
-   include blakston.khd
-
 resources:
-
-   include candle.lkod
-
-   candle_name = "candle"
-   candle_desc = "A beeswax candle burns brightly."
-   candle_icon = candle.bgf
 
 classvars:
 
-   vrName = candle_name
-   vrDesc = candle_desc
-   vrIcon = candle_icon
-
-   % Lighting flags.  Default "on" and wavering flags
-   viLightFlags = LIGHT_FLAG_ON | LIGHT_FLAG_WAVERING
-
-   % Light color.
-   viLightColor = LIGHT_FIRE
-
 properties:
-
-   % Intensity, from 0-255.
-   piLightIntensity = 5
 
 messages:
 

@@ -200,6 +200,9 @@ classvars:
 properties:
 
    piRoom_Flags = 0
+   
+   % DMs can say "turn off pk" in a room to prevent PK for 60 minutes
+   ptNoPKTimer = $
 
    prRoom                       % the room resource id
    prmRoom                      % the room data id
@@ -1093,6 +1096,12 @@ messages:
          DeleteTimer(ptPeriodic_sounds);
          ptPeriodic_sounds = $;
       }
+      
+      if ptNoPKTimer <> $
+      {
+         DeleteTimer(ptNoPKTimer);
+         ptNoPKTimer = $;
+      }
 
       Send(SYS,@DeleteRoom,#what=self);
       Send(self,@RemoveAllEnchantments);
@@ -1547,7 +1556,7 @@ messages:
 
    SpellCast(who = $,oSpell = $,lItems = $,bItemCast = FALSE)
    {
-      local state, school, roomench;
+      local state, school, oRoomEnch;
 
       % Skip these if the spell is cast by an item.
       if bItemCast
@@ -1559,22 +1568,22 @@ messages:
 
       if school = SS_SHALILLE
       {
-         roomench = Send(SYS,@FindSpellByNum,#num=SID_SHALILLEBANE);
-         state = Send(self,@GetEnchantmentState,#what=roomench);
+         oRoomEnch = Send(SYS,@FindSpellByNum,#num=SID_SHALILLEBANE);
+         state = Send(self,@GetEnchantmentState,#what=oRoomEnch);
          if state <> $
          {
-            Post(roomench,@HurtCaster,#shalCaster=who,#iSpellPower=state,
-                 #shalSpellLevel=Send(oSpell,@GetLevel));
+            Post(oRoomEnch,@RoomEnchantmentDamage,#oTarget=who,#state=state,
+                 #iLevel=Send(oSpell,@GetLevel));
          }
       }
       else if school = SS_QOR
       {
-         roomench = Send(SYS,@FindSpellByNum,#num=SID_QORBANE);
-         state = Send(self,@GetEnchantmentState,#what=roomench);
+         oRoomEnch = Send(SYS,@FindSpellByNum,#num=SID_QORBANE);
+         state = Send(self,@GetEnchantmentState,#what=oRoomEnch);
          if state <> $
          {
-            Post(roomench,@HurtCaster,#qorCaster=who,#iSpellPower=state,
-                 #qorSpellLevel=Send(oSpell,@GetLevel));
+            Post(oRoomEnch,@RoomEnchantmentDamage,#oTarget=who,#state=state,
+                 #iLevel=Send(oSpell,@GetLevel));
          }
       }
 
@@ -2007,6 +2016,7 @@ messages:
       local i,each_obj,bUser, lLoopSound;
 
       if what = $
+         OR what = self
       {
          return;
       }
@@ -3392,17 +3402,17 @@ messages:
       return;
    }
 
-   EnchantAllOccupants(what = $, iSpellPower=0)
+   EnchantAllOccupants(what = $, iSpellPower = 0, state = $)
    {
       local i, each_obj;
 
       foreach i in plActive
       {
-         each_obj = Send(self,@HolderExtractObject,#data=i);
+         each_obj = First(i);
          if IsClass(each_obj,&Player)
          {
             Send(what,@StartEnchantment,#who=each_obj,
-                 #iSpellPower=iSpellPower);
+                 #iSpellPower=iSpellPower,#state=state);
          }
       }
 
@@ -5126,6 +5136,28 @@ messages:
    GetGenerators()
    {
       return $;
+   }
+   
+   StartTemporaryNoPK()
+   {
+      if NOT (piRoom_flags & ROOM_NO_PK)
+      {
+         piRoom_flags = piRoom_flags | ROOM_NO_PK;
+         ptNoPKTimer = CreateTimer(self,@EndTemporaryNoPK,60000*60);
+      }
+      return;
+   }
+   
+   EndTemporaryNoPK(timer=$)
+   {
+      if timer = $
+      {
+         % Manual end by admin.
+         DeleteTimer(ptNoPKTimer);
+      }
+      ptNoPKTimer = $;
+      Send(self,@SetRoomFlagToDefault,#flag=ROOM_NO_PK);
+      return;
    }
 
 end

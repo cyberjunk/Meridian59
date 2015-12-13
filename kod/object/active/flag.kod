@@ -115,6 +115,9 @@ properties:
    ptGenerateTroops = $
    piTroopCap = 4
 
+   piFlagHotspot = HS_FLAG
+   ptHalfStaffOff = $
+
 messages:
 
    Constructor()
@@ -629,7 +632,8 @@ messages:
          AddPacket(4,flag_rebel_icon_rsc);
       }
 
-      AddPacket(1,HS_FLAG);
+      %AddPacket(1,HS_FLAG);
+      AddPacket(1,piFlagHotSpot);
       AddPacket(1,ANIMATE_CYCLE,4,100,2,FRAME_START,2,FRAME_END);
 
       return;
@@ -731,11 +735,6 @@ messages:
       if poOwner <> $
       {
          Send(poOwner,@SomethingChanged,#what=self);
-         if piFaction <> FACTION_NEUTRAL AND ptGenerateTroops = $
-            AND IsClass(poOwner,&MonsterRoom)
-         {
-            ptGenerateTroops = CreateTimer(self,@GenerateTroops,piGen_time);
-         }
       }
 
       return;
@@ -787,18 +786,46 @@ messages:
 
    NewOwner(what=$)
    {
-      if IsClass(what,&MonsterRoom)
-      {
-         if piFaction <> FACTION_NEUTRAL
-         {
-            % Start generating troops.
-            ptGenerateTroops = CreateTimer(self,@GenerateTroops,piGen_time);
-         }
-      }
-      else
+      if NOT IsClass(what,&MonsterRoom)
       {
          % Make sure the claimable flag is off.
          pbClaimable = FALSE;
+      }
+
+      propagate;
+   }
+
+   FirstUserEntered()
+   "Always have a soldier present to defend the flagpole when a player "
+   "enters the room. If none are present, call GenerateTroops immediately "
+   "otherwise just set the timer."
+   {
+      local i, each_obj;
+
+      if (poOwner = $
+         OR NOT IsClass(poOwner,&MonsterRoom))
+      {
+         propagate;
+      }
+
+      if (ptGenerateTroops = $)
+      {
+         foreach i in Send(poOwner,@GetHolderActive)
+         {
+            each_obj = First(i);
+
+            if (IsClass(each_obj,&FactionTroop)
+               AND Send(each_obj,@GetFaction) = piFaction)
+            {
+               % We have at least one here already, so just set the timer.
+               ptGenerateTroops = CreateTimer(self,@GenerateTroops,piGen_time);
+
+               propagate;
+            }
+         }
+
+         % None found, spawn one.
+         Send(self,@GenerateTroops);
       }
 
       propagate;
@@ -813,6 +840,7 @@ messages:
       if poOwner = $
          OR NOT IsClass(poOwner,&MonsterRoom)
          OR piFaction = FACTION_NEUTRAL
+         OR NOT Send(poOwner,@IsUserInRoom)
       {
          return;
       }
@@ -907,26 +935,69 @@ messages:
       return;
    }
 
+   HalfStaff(duration=86400000)
+   "for mourning purposes, in game or not default duratio is 1 day 86400000"
+   "Max duration is Kod Max int 134217728(A little more than 37 hours)"
+   {
+      if (ptHalfStaffOff <> $)
+      {
+         DeleteTimer(ptHalfStaffOff);
+      }
+
+      piFlagHotSpot = 4;
+      if (poOwner <> $) 
+      { 
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+      ptHalfStaffOff = CreateTimer(self,@HalfStaffTimer,duration);
+
+      return;
+   }
+
+   HalfStaffTimer(timer=$)
+   {
+      if (timer = $)
+         AND (ptHalfStaffOff <> $)
+      {
+         DeleteTimer(ptHalfStaffOff);
+      }
+
+      ptHalfStaffOff = $;
+      piFlagHotSpot = 1;
+      if (poOwner <> $) 
+      { 
+         Send(poOwner,@SomethingChanged,#what=self);
+      }
+
+      return;
+   }
+
    Delete()
    {
       poClaimer = $;
 
       if ptClaimAttempt <> $
       {
-         deleteTimer(ptClaimAttempt);
+         DeleteTimer(ptClaimAttempt);
          ptClaimAttempt = $;
       }
 
       if ptNextAllowedAttempt <> $
       {
-         deleteTimer(ptNextAllowedAttempt);
+         DeleteTimer(ptNextAllowedAttempt);
          ptNextAllowedAttempt = $;
       }
 
       if ptGenerateTroops <> $
       {
-         deleteTimer(ptGenerateTroops);
+         DeleteTimer(ptGenerateTroops);
          ptGenerateTroops = $;
+      }
+
+      if ptHalfStaffOff <> $
+      {
+         DeleteTimer(ptHalfStaffOff);
+         ptHalfStaffOff = $;
       }
 
       propagate;
