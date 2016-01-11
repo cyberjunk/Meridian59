@@ -55,7 +55,11 @@ void ResetRooms()
          {
             temp = room->next;
             BSPFreeRoom(&room->data);
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+			FreeMemorySIMD(MALLOC_ID_ROOM, room, sizeof(room_node));
+#else
             FreeMemory(MALLOC_ID_ROOM, room, sizeof(room_node));
+#endif
             room = temp;
          }
          rooms[i % INIT_ROOMTABLE_SIZE] = NULL;
@@ -85,7 +89,11 @@ int LoadRoom(int resource_id)
    /****************************************************************/
 
    // Load ROO
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+   room_node* newnode = (room_node*)AllocateMemorySIMD(MALLOC_ID_ROOM, sizeof(room_node));
+#else
    room_node* newnode = (room_node*)AllocateMemory(MALLOC_ID_ROOM, sizeof(room_node));
+#endif
 
    // combine path for roo and filename
    sprintf(s, "%s%s", ConfigStr(PATH_ROOMS), r->resource_val[0]);
@@ -93,7 +101,11 @@ int LoadRoom(int resource_id)
    // try load it
    if (!BSPLoadRoom(s, &newnode->data))
    {
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+      FreeMemorySIMD(MALLOC_ID_ROOM, newnode, sizeof(room_node));
+#else
       FreeMemory(MALLOC_ID_ROOM, newnode, sizeof(room_node));
+#endif
       bprintf("LoadRoomData couldn't open %s!!!\n",r->resource_val[0]);
       return NIL;
    }
@@ -130,7 +142,11 @@ void UnloadRoom(room_node *r)
          if (room->data.roomdata_id == r->data.roomdata_id)
          {
             BSPFreeRoom(&room->data);
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+            FreeMemorySIMD(MALLOC_ID_ROOM, room, sizeof(room_node));
+#else
             FreeMemory(MALLOC_ID_ROOM, room, sizeof(room_node));
+#endif
             room = NULL;
             rooms[room_hash] = temp;
             return;

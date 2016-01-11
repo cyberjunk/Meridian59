@@ -1319,7 +1319,11 @@ void BSPBlockerClear(room_type* Room)
    while (blocker)
    {
       BlockerNode* tmp = blocker->Next;
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+      FreeMemorySIMD(MALLOC_ID_ROOM, blocker, sizeof(BlockerNode));
+#else
       FreeMemory(MALLOC_ID_ROOM, blocker, sizeof(BlockerNode));
+#endif
       blocker = tmp;
    }
    Room->Blocker = NULL;
@@ -1349,8 +1353,11 @@ bool BSPBlockerRemove(room_type* Room, int ObjectID)
             previous->Next = blocker->Next;
 
          // now cleanup node
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+		 FreeMemorySIMD(MALLOC_ID_ROOM, blocker, sizeof(BlockerNode));
+#else
          FreeMemory(MALLOC_ID_ROOM, blocker, sizeof(BlockerNode));
-
+#endif
          return true;
       }
 
@@ -1370,7 +1377,11 @@ bool BSPBlockerAdd(room_type* Room, int ObjectID, V2* P)
       return false;
 
    // alloc
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+   BlockerNode* newblocker = (BlockerNode*)AllocateMemorySIMD(MALLOC_ID_ROOM, sizeof(BlockerNode));
+#else
    BlockerNode* newblocker = (BlockerNode*)AllocateMemory(MALLOC_ID_ROOM, sizeof(BlockerNode));
+#endif
 
    // set values on new blocker
    newblocker->ObjectID = ObjectID;
@@ -1500,8 +1511,13 @@ bool BSPLoadRoom(char *fname, room_type *room)
    { fclose(infile); return False; }
 
    // allocate tree mem
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+   room->TreeNodes = (BspNode*)AllocateMemorySIMD(
+      MALLOC_ID_ROOM, room->TreeNodesCount * sizeof(BspNode));
+#else
    room->TreeNodes = (BspNode*)AllocateMemory(
       MALLOC_ID_ROOM, room->TreeNodesCount * sizeof(BspNode));
+#endif
 
    for (i = 0; i < room->TreeNodesCount; i++)
    {
@@ -1553,11 +1569,17 @@ bool BSPLoadRoom(char *fname, room_type *room)
          { fclose(infile); return False; }
 
          // allocate memory for points of polygon
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+         node->u.leaf.PointsFloor = (V3*)AllocateMemorySIMD(
+            MALLOC_ID_ROOM, node->u.leaf.PointsCount * sizeof(V3));
+         node->u.leaf.PointsCeiling = (V3*)AllocateMemorySIMD(
+            MALLOC_ID_ROOM, node->u.leaf.PointsCount * sizeof(V3));
+#else
          node->u.leaf.PointsFloor = (V3*)AllocateMemory(
             MALLOC_ID_ROOM, node->u.leaf.PointsCount * sizeof(V3));
          node->u.leaf.PointsCeiling = (V3*)AllocateMemory(
             MALLOC_ID_ROOM, node->u.leaf.PointsCount * sizeof(V3));
-
+#endif
          // read points
          for (j = 0; j < node->u.leaf.PointsCount; j++)
          {
@@ -1566,9 +1588,13 @@ bool BSPLoadRoom(char *fname, room_type *room)
             if (fread(&node->u.leaf.PointsFloor[j].Y, 1, 4, infile) != 4)
             { fclose(infile); return False; }
 			   
-            // x,y are same on floor/ceiling
+            // x,y are same on floor/ceiling, set yet unknown Z and unused W to 0.0f
             node->u.leaf.PointsCeiling[j].X = node->u.leaf.PointsFloor[j].X;
             node->u.leaf.PointsCeiling[j].Y = node->u.leaf.PointsFloor[j].Y;
+            node->u.leaf.PointsCeiling[j].Z = node->u.leaf.PointsFloor[j].Z = 0.0f;
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+            node->u.leaf.PointsCeiling[j].W = node->u.leaf.PointsFloor[j].W = 0.0f;
+#endif
          }
       }
    }
@@ -1582,8 +1608,13 @@ bool BSPLoadRoom(char *fname, room_type *room)
    { fclose(infile); return False; }
 
    // allocate walls mem
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+   room->Walls = (Wall*)AllocateMemorySIMD(
+      MALLOC_ID_ROOM, room->WallsCount * sizeof(Wall));
+#else
    room->Walls = (Wall*)AllocateMemory(
       MALLOC_ID_ROOM, room->WallsCount * sizeof(Wall));
+#endif
 
    for (i = 0; i < room->WallsCount; i++)
    {
@@ -1991,10 +2022,17 @@ void BSPFreeRoom(room_type *room)
    {
       if (room->TreeNodes[i].Type == BspLeafType)
       {
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+         FreeMemorySIMD(MALLOC_ID_ROOM, room->TreeNodes[i].u.leaf.PointsFloor,
+            room->TreeNodes[i].u.leaf.PointsCount * sizeof(V3));
+         FreeMemorySIMD(MALLOC_ID_ROOM, room->TreeNodes[i].u.leaf.PointsCeiling,
+            room->TreeNodes[i].u.leaf.PointsCount * sizeof(V3));
+#else
          FreeMemory(MALLOC_ID_ROOM, room->TreeNodes[i].u.leaf.PointsFloor,
             room->TreeNodes[i].u.leaf.PointsCount * sizeof(V3));
          FreeMemory(MALLOC_ID_ROOM, room->TreeNodes[i].u.leaf.PointsCeiling,
             room->TreeNodes[i].u.leaf.PointsCount * sizeof(V3));
+#endif
       }
    }
 
@@ -2007,8 +2045,13 @@ void BSPFreeRoom(room_type *room)
          FreeMemory(MALLOC_ID_ROOM, room->Sectors[i].SlopeInfoCeiling, sizeof(SlopeInfo));
    }
 
+#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+   FreeMemorySIMD(MALLOC_ID_ROOM, room->TreeNodes, room->TreeNodesCount * sizeof(BspNode));
+   FreeMemorySIMD(MALLOC_ID_ROOM, room->Walls, room->WallsCount * sizeof(Wall));
+#else
    FreeMemory(MALLOC_ID_ROOM, room->TreeNodes, room->TreeNodesCount * sizeof(BspNode));
    FreeMemory(MALLOC_ID_ROOM, room->Walls, room->WallsCount * sizeof(Wall));
+#endif
    FreeMemory(MALLOC_ID_ROOM, room->Sides, room->SidesCount * sizeof(Side));
    FreeMemory(MALLOC_ID_ROOM, room->Sectors, room->SectorsCount * sizeof(SectorNode));
 
