@@ -55,11 +55,7 @@ void ResetRooms()
          {
             temp = room->next;
             BSPFreeRoom(&room->data);
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
             FreeMemorySIMD(MALLOC_ID_ROOM, room, sizeof(room_node));
-#else
-            FreeMemory(MALLOC_ID_ROOM, room, sizeof(room_node));
-#endif
             room = temp;
          }
          rooms[i % INIT_ROOMTABLE_SIZE] = NULL;
@@ -89,22 +85,15 @@ int LoadRoom(int resource_id)
    /****************************************************************/
 
    // Load ROO
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
    room_node* newnode = (room_node*)AllocateMemorySIMD(MALLOC_ID_ROOM, sizeof(room_node));
-#else
-   room_node* newnode = (room_node*)AllocateMemory(MALLOC_ID_ROOM, sizeof(room_node));
-#endif
+
    // combine path for roo and filename
    sprintf(s, "%s%s", ConfigStr(PATH_ROOMS), r->resource_val[0]);
 
    // try load it
    if (!BSPLoadRoom(s, &newnode->data))
    {
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
       FreeMemorySIMD(MALLOC_ID_ROOM, newnode, sizeof(room_node));
-#else
-      FreeMemory(MALLOC_ID_ROOM, newnode, sizeof(room_node));
-#endif
       bprintf("LoadRoomData couldn't open %s!!!\n",r->resource_val[0]);
       return NIL;
    }
@@ -156,11 +145,7 @@ void UnloadRoom(room_node *r)
    {
       rooms[room_hash] = room->next;
       BSPFreeRoom(&room->data);
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
       FreeMemorySIMD(MALLOC_ID_ROOM, room, sizeof(room_node));
-#else
-      FreeMemory(MALLOC_ID_ROOM, room, sizeof(room_node));
-#endif
       room = NULL;
 
       return;
@@ -177,11 +162,8 @@ void UnloadRoom(room_node *r)
          // of the room we're freeing.
          room->next = room->next->next;
          BSPFreeRoom(&temp->data);
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
          FreeMemorySIMD(MALLOC_ID_ROOM, temp, sizeof(room_node));
-#else
-         FreeMemory(MALLOC_ID_ROOM, temp, sizeof(room_node));
-#endif
+
          return;
       }
       room = room->next;

@@ -40,6 +40,7 @@ DECLSPEC_NOINLINE static const void GenerateRandoms()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
+
 DECLSPEC_NOINLINE static const void TestLoopEmpty()
 {
 	QueryPerformanceCounter(&start);
@@ -60,19 +61,6 @@ DECLSPEC_NOINLINE static const void TestLoopEmpty()
 	QueryPerformanceCounter(&end);
 	UpdateInterval();
 	printf("EMPTY LOOP   Time: %f\n", interval);
-}
-
-DECLSPEC_NOINLINE static const void TestLoopNop()
-{
-	QueryPerformanceCounter(&start);
-	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
-	for (size_t i = 7; i < LOOPCOUNT; i++)
-	{
-		__asm { nop }
-	}
-	QueryPerformanceCounter(&end);
-	UpdateInterval();
-	printf("NOP          Time: %f\n", interval);
 }
 
 DECLSPEC_NOINLINE static const void TestMOVAPSFrom()
@@ -153,67 +141,6 @@ DECLSPEC_NOINLINE static const void TestMOVSSTo()
 	printf("MOVSS TO     Time: %f\n", interval);
 }
 
-DECLSPEC_NOINLINE static const void TestADDPS()
-{
-	QueryPerformanceCounter(&start);
-	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
-		for (size_t i = 7; i < LOOPCOUNT; i++)
-		{
-			__asm { ADDPS xmm0, xmm0 }
-		}
-	QueryPerformanceCounter(&end);
-	UpdateInterval();
-	printf("ADDPS        Time: %f\n", interval);
-}
-
-DECLSPEC_NOINLINE static const void TestADDSS()
-{
-	QueryPerformanceCounter(&start);
-	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
-		for (size_t i = 7; i < LOOPCOUNT; i++)
-		{
-			__asm { ADDSS xmm0, xmm0 }
-		}
-	QueryPerformanceCounter(&end);
-	UpdateInterval();
-	printf("ADDSS        Time: %f\n", interval);
-}
-
-DECLSPEC_NOINLINE static const void TestMOVADDMOV()
-{
-	__m128 val[3];
-
-	QueryPerformanceCounter(&start);
-	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
-	{
-#if 0
-		__asm
-		{
-			mov eax, LOOPCOUNT - 7
-
-			innerloop:
-				movaps  xmm0, xmmword ptr values[TYPE val * 0]
-				addps   xmm0, xmmword ptr values[TYPE val * 1]
-				movaps  xmmword ptr values[TYPE val * 2], xmm0
-				dec     eax
-				jnz     innerloop
-		}
-#else
-		for (size_t i = 7; i < LOOPCOUNT; i++)
-		{
-			__asm
-			{
-				movaps  xmm0, xmmword ptr values[TYPE val * 0]
-				addps   xmm0, xmmword ptr values[TYPE val * 1]
-				movaps  xmmword ptr values[TYPE val * 2], xmm0
-			}
-		}
-#endif
-	}
-	QueryPerformanceCounter(&end);
-	UpdateInterval();
-	printf("MOVADDMOV    Time: %f\n", interval);
-}
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 DECLSPEC_NOINLINE static const void TestV3Add()
@@ -268,19 +195,6 @@ DECLSPEC_NOINLINE static const void TestV3Cross()
 	printf("V3CROSS      Time: %f\n", interval);
 }
 
-DECLSPEC_NOINLINE static const void TestV3IsZero()
-{
-	QueryPerformanceCounter(&start);
-	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
-	for (size_t i = 7; i < LOOPCOUNT; i++)
-	{
-		*(int*)&dotproducts = V3ISZERO(&values[i - 6]);
-	}
-	QueryPerformanceCounter(&end);
-	UpdateInterval();
-	printf("V3ISZERO     Time: %f\n", interval);
-}
-
 DECLSPEC_NOINLINE static const void TestV3Scale()
 {
 	QueryPerformanceCounter(&start);
@@ -300,7 +214,7 @@ DECLSPEC_NOINLINE static const void TestV3Len()
 	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
 	for (size_t i = 7; i < LOOPCOUNT; i++)
 	{
-		dotproducts[i] = V3LEN(&values[i-1]);
+		dotproducts[i] = V3LEN(&values[i]);
 	}
 	QueryPerformanceCounter(&end);
 	UpdateInterval();
@@ -319,6 +233,34 @@ DECLSPEC_NOINLINE static const void TestV3Normalize()
 	UpdateInterval();
 	printf("V3NORMALIZE  Time: %f\n", interval);
 }
+
+DECLSPEC_NOINLINE static const void TestV3Round()
+{
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNT; i++)
+	{
+		V3ROUND(&values[i - 1]);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("V3ROUND      Time: %f\n", interval);
+}
+
+
+DECLSPEC_NOINLINE static const void TestV3IsZero()
+{
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+		for (size_t i = 7; i < LOOPCOUNT; i++)
+		{
+			*(int*)&dotproducts = V3ISZERO(&values[i - 6]);
+		}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("V3ISZERO     Time: %f\n", interval);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 DECLSPEC_NOINLINE static const void TestV2Add()
@@ -360,6 +302,45 @@ DECLSPEC_NOINLINE static const void TestV2Scale()
 	printf("V2SCALE      Time: %f\n", interval);
 }
 
+DECLSPEC_NOINLINE static const void TestV2Dot()
+{
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNT; i++)
+	{
+		dotproducts[i] = V2DOT(&values[i - 1], &values[i]);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("V2DOT        Time: %f\n", interval);
+}
+
+DECLSPEC_NOINLINE static const void TestV2Len()
+{
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNT; i++)
+	{
+		dotproducts[i] = V2LEN(&values[i]);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("V2LEN        Time: %f\n", interval);
+}
+
+DECLSPEC_NOINLINE static const void TestV2Round()
+{
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNT; i++)
+	{
+		V2ROUND(&values[i - 1]);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("V2ROUND      Time: %f\n", interval);
+}
+
 DECLSPEC_NOINLINE static const void TestV2IsInBox()
 {
 	QueryPerformanceCounter(&start);
@@ -384,7 +365,7 @@ DECLSPEC_NOINLINE static const void TestIntersectLineTriangle()
 	}
 	QueryPerformanceCounter(&end);
 	UpdateInterval();
-	printf("INT-LIN-TRIA Time: %f\n", interval);
+	printf("INT-LIN-TRIA Time: %f \n", interval);
 }
 
 DECLSPEC_NOINLINE static const void TestMinSquaredDistanceToLineSegment()
@@ -434,8 +415,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		GenerateRandoms();
 		TestLoopEmpty();
 		GenerateRandoms();
-		TestLoopNop();
-		GenerateRandoms();
 		TestMOVAPSFrom();
 		GenerateRandoms();
 		TestMOVAPSTo();
@@ -447,16 +426,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		TestMOVSSFrom();
 		GenerateRandoms();
 		TestMOVSSTo();
-		GenerateRandoms();
-		TestADDPS();
-		GenerateRandoms();
-		TestADDSS();
-		GenerateRandoms();
-		TestMOVADDMOV();
 		////////////////////////////////////////////////////////////////////////////////////
 		printf("---------------------------------------------\n");
-		GenerateRandoms();
-		TestV3IsZero();
 		GenerateRandoms();
 		TestV3Add();
 		GenerateRandoms();
@@ -468,9 +439,13 @@ int _tmain(int argc, _TCHAR* argv[])
 		GenerateRandoms();
 		TestV3Cross();
 		GenerateRandoms();
-		TestV3Len();
+		TestV3Len(); // invalid loopcount in sse2
 		GenerateRandoms();
 		TestV3Normalize();
+		GenerateRandoms();
+		TestV3Round();
+		GenerateRandoms();
+		TestV3IsZero();
 		////////////////////////////////////////////////////////////////////////////////////
 		printf("---------------------------------------------\n");
 		GenerateRandoms();
@@ -479,6 +454,12 @@ int _tmain(int argc, _TCHAR* argv[])
 		TestV2Sub();
 		GenerateRandoms();
 		TestV2Scale();
+		//GenerateRandoms();
+		//TestV2Dot(); // invalid loopcount in sse2
+		GenerateRandoms();
+		TestV2Len(); // invalid loopcount in sse2
+		GenerateRandoms();
+		TestV2Round();
 		GenerateRandoms();
 		TestV2IsInBox();
 		////////////////////////////////////////////////////////////////////////////////////
@@ -486,11 +467,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		GenerateRandoms();
 		TestIntersectLineTriangle();
 		GenerateRandoms();
-		TestMinSquaredDistanceToLineSegment();
-		GenerateRandoms();
 		TestIntersectLineCircle();
+		GenerateRandoms();
+		TestMinSquaredDistanceToLineSegment();
 		////////////////////////////////////////////////////////////////////////////////////
-
 		printf("---------------------------------------------\n");
 		printf("          PRESS KEY TO RESTART \n");
 		getchar();

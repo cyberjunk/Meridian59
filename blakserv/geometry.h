@@ -11,14 +11,16 @@
 
 #define EPSILON     0.0001f
 #define EPSILONBIG  0.1f
-#define ISZERO(a)   ((a) > -EPSILON && (a) < EPSILON)
 #define PI_MULT_2   6.283185307f
+#define ISZERO(a)   (((a) > -EPSILON) & ((a) < EPSILON))
+#define MAX(a,b)    ((a) >= (b) ? (a) : (b))
+#define MIN(a,b)    ((a) <= (b) ? (a) : (b))
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                           VECTOR TYPE
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+#if defined(SSE2) || defined(SSE3) || defined(SSE4)
 // The basic 4D vector used for vector calculations.
 // Must be aligned to 16 bytes and allocated on the heap by using _aligned_alloc instead of malloc
 // Union provides easy access for different use-cases, including SIMD instructions by 'SSE'
@@ -41,7 +43,7 @@ typedef struct V2 { float X, Y; } V2;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                         SSE VECTOR OPERATIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
+#if defined(SSE2) || defined(SSE3) || defined(SSE4)
 #define V3ADD(a,b,c)    (a)->SSE = _mm_add_ps((b)->SSE, (c)->SSE);         // a = b + c
 #define V3SUB(a,b,c)    (a)->SSE = _mm_sub_ps((b)->SSE, (c)->SSE);         // a = b - c
 #define V3SCALE(a,b)    (a)->SSE = _mm_mul_ps((a)->SSE, _mm_set1_ps(b));   // a = a * b  (b is float)
@@ -49,7 +51,9 @@ typedef struct V2 { float X, Y; } V2;
    _mm_mul_ps(_mm_shuffle_ps((b)->SSE, (b)->SSE, _MM_SHUFFLE(3, 0, 2, 1)), _mm_shuffle_ps((c)->SSE, (c)->SSE, _MM_SHUFFLE(3, 1, 0, 2))),   \
    _mm_mul_ps(_mm_shuffle_ps((b)->SSE, (b)->SSE, _MM_SHUFFLE(3, 1, 0, 2)), _mm_shuffle_ps((c)->SSE, (c)->SSE, _MM_SHUFFLE(3, 0, 2, 1))));
 
-#if defined(SSE2) || defined(SSE3) || defined(SSE4)
+#define V3SCALE3(a,b)   (a)->SSE = _mm_mul_ps((a)->SSE, (b)->SSE);
+#define V3SQRT3(a,b)    (a)->SSE = _mm_sqrt_ps((b)->SSE);
+
 __forceinline int V3ISZERO(const V3* a)
 {
    const __m128  eps_posi = _mm_set1_ps(EPSILON);             //  e
@@ -57,36 +61,41 @@ __forceinline int V3ISZERO(const V3* a)
    const __m128  lth_mask = _mm_cmplt_ps(a->SSE, eps_posi);   // r1 = a <  e
    const __m128  gth_mask = _mm_cmpgt_ps(a->SSE, eps_nega);   // r2 = a > -e
    const __m128  and_mask = _mm_and_ps(gth_mask, lth_mask);   // r3 = r1 & r2
-   const __m128i cast     = _mm_castps_si128(and_mask);       // cast from float to int (no-op) [SSE2]
-   const int     mask     = _mm_movemask_epi8(cast);          // combine some bits from all registers [SSE2]
+   const __m128i cast     = _mm_castps_si128(and_mask);       // cast from float to int (no-op)
+   const int     mask     = _mm_movemask_epi8(cast);          // combine some bits from all registers
    return mask & 0x0FFF;                                      // filter for 3D
 }
-#else
-#define V3ISZERO(a) (ISZERO((a)->X) && ISZERO((a)->Y) && ISZERO((a)->Z)) 
-#endif
 
-//////////////////////////////////////
-// These are only defined for SSE
-// Use in SSE specific parts only
-//////////////////////////////////////
-#define V3SCALE3(a,b)   (a)->SSE = _mm_mul_ps((a)->SSE, (b)->SSE);
-#define V3SQRT3(a,b)    (a)->SSE = _mm_sqrt_ps((b)->SSE);
-
-//////////////////////////////////////
-// SSE4 based
-//////////////////////////////////////
 #if defined(SSE4)
-#define V3DOT3(a,b,c)   (a)->SSE = _mm_dp_ps((b)->SSE, (c)->SSE, 255);
-#define V3DOT(a,b)      _mm_dp_ps((a)->SSE, (b)->SSE, 255).m128_f32[0]
-#define V3LEN(a)        _mm_sqrt_ps(_mm_dp_ps((a)->SSE, (a)->SSE, 255)).m128_f32[0]
+#define V3DOT3(a,b,c)   (a)->SSE = _mm_dp_ps((b)->SSE, (c)->SSE, 127);
+#define V3DOT(a,b)      _mm_dp_ps((a)->SSE, (b)->SSE, 127).m128_f32[0]
+#define V3LEN(a)        _mm_sqrt_ps(_mm_dp_ps((a)->SSE, (a)->SSE, 127)).m128_f32[0]
+#define V3ROUND(a)      (a)->SSE = _mm_round_ps((a)->SSE, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
 #else
-//////////////////////////////////////
-// SSE based
-//////////////////////////////////////
-#define V3DOT3(a,b,c)                                                                            \
-   (a)->SSE = _mm_mul_ps((b)->SSE, (c)->SSE);                                                    \
-   (a)->SSE = _mm_add_ps((a)->SSE, _mm_shuffle_ps((a)->SSE, (a)->SSE, _MM_SHUFFLE(2, 3, 0, 1))); \
-   (a)->SSE = _mm_add_ps((a)->SSE, _mm_shuffle_ps((a)->SSE, (a)->SSE, _MM_SHUFFLE(0, 1, 2, 3)));
+
+#if defined(SSE3)
+__forceinline void V3DOT3(V3* a, const V3* b, const V3* c)
+{
+   const __m128  mult = _mm_mul_ps(b->SSE, c->SSE);
+   const __m128i mski = _mm_set_epi32(0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+   const __m128  mskf = _mm_castsi128_ps(mski);
+   const __m128  and  = _mm_and_ps(mult, mskf);
+   const __m128  add1 = _mm_hadd_ps(and, and);    // [SSE3]
+   const __m128  add2 = _mm_hadd_ps(add1, add1);  // [SSE3]
+   a->SSE = add2;
+}
+#else
+__forceinline void V3DOT3(V3* a, const V3* b, const V3* c)
+{
+   const __m128  mult = _mm_mul_ps(b->SSE, c->SSE);
+   const __m128i mski = _mm_set_epi32(0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+   const __m128  mskf = _mm_castsi128_ps(mski);
+   const __m128  and  = _mm_and_ps(mult, mskf);
+   const __m128  add1 = _mm_add_ps(and, _mm_shuffle_ps(and, and, _MM_SHUFFLE(2, 3, 0, 1)));
+   const __m128  add2 = _mm_add_ps(add1, _mm_shuffle_ps(add1, add1, _MM_SHUFFLE(0, 1, 2, 3)));
+   a->SSE = add2;
+}
+#endif
 
 __forceinline float V3DOT(const V3* a, const V3* b)
 {
@@ -94,6 +103,7 @@ __forceinline float V3DOT(const V3* a, const V3* b)
    V3DOT3(&v0, a, b);
    return v0.X;
 }
+
 __forceinline float V3LEN(const V3* a)
 {
    V3 v0;
@@ -101,6 +111,11 @@ __forceinline float V3LEN(const V3* a)
    V3SQRT3(&v0, &v0);
    return v0.X;
 }
+
+#define V3ROUND(a)          \
+   (a)->X = roundf((a)->X); \
+   (a)->Y = roundf((a)->Y); \
+   (a)->Z = roundf((a)->Z);
 #endif
 
 #define V3LEN2(a)    V3DOT(a,a)
@@ -113,10 +128,17 @@ __forceinline float V3LEN(const V3* a)
 
 #define V2DOT(a,b) ((a)->X * (b)->X + (a)->Y * (b)->Y)
 #define V2LEN2(a)  V2DOT(a,a)
-#define V2LEN(a)   sqrtf(V2LEN2((a)))
+#define V2LEN(a)   _mm_sqrt_ss(_mm_set1_ps(V2LEN2((a)))).m128_f32[0]
+
+#if defined(SSE4)
+#define V2ROUND(a)   V3ROUND(a)
+#else
+#define V2ROUND(a)          \
+   (a)->X = roundf((a)->X); \
+   (a)->Y = roundf((a)->Y);
+#endif
 
 // true if point (c) lies inside boundingbox defined by min/max of (a) and (b)
-#if defined(SSE2) || defined(SSE3) || defined(SSE4)
 __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
 {
    const __m128  epsi = _mm_set1_ps(EPSILONBIG);      // e
@@ -131,17 +153,12 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
    const int     mask = _mm_movemask_epi8(cast);      // combine some bits from all registers [SSE2]
    return (mask & 0x00FF) == 0x00FF;                  // filter for 2D
 }
-#else
-#define ISINBOX(a, b, c) \
-   (fmin((a)->X, (b)->X) - EPSILONBIG <= (c)->X && (c)->X <= fmax((a)->X, (b)->X) + EPSILONBIG && \
-    fmin((a)->Y, (b)->Y) - EPSILONBIG <= (c)->Y && (c)->Y <= fmax((a)->Y, (b)->Y) + EPSILONBIG)
-#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                        NO-SSE VECTOR OPERATIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if !(defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4))
+#if !(defined(SSE2) || defined(SSE3) || defined(SSE4))
 #define V3ADD(a,b,c) \
    (a)->X = (b)->X + (c)->X; \
    (a)->Y = (b)->Y + (c)->Y; \
@@ -157,7 +174,7 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
    (a)->Y *= (b); \
    (a)->Z *= (b);
 
-#define V3ISZERO(a) (ISZERO((a)->X) && ISZERO((a)->Y) && ISZERO((a)->Z)) 
+#define V3ISZERO(a) (ISZERO((a)->X) & ISZERO((a)->Y) & ISZERO((a)->Z)) 
 
 #define V3CROSS(a,b,c) \
    (a)->X = (b)->Y * (c)->Z - (b)->Z * (c)->Y; \
@@ -167,6 +184,11 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
 #define V3DOT(a,b) ((a)->X * (b)->X + (a)->Y * (b)->Y + (a)->Z * (b)->Z)
 #define V3LEN2(a)  V3DOT(a,a)
 #define V3LEN(a)   sqrtf(V3LEN2((a)))
+
+#define V3ROUND(a)          \
+   (a)->X = roundf((a)->X); \
+   (a)->Y = roundf((a)->Y); \
+   (a)->Z = roundf((a)->Z);
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -186,10 +208,14 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
 #define V2LEN2(a)  V2DOT(a,a)
 #define V2LEN(a)   sqrtf(V2LEN2((a)))
 
+#define V2ROUND(a)          \
+   (a)->X = roundf((a)->X); \
+   (a)->Y = roundf((a)->Y);
+
 // true if point (c) lies inside boundingbox defined by min/max of (a) and (b)
 #define ISINBOX(a, b, c) \
-   (fmin((a)->X, (b)->X) - EPSILONBIG <= (c)->X && (c)->X <= fmax((a)->X, (b)->X) + EPSILONBIG && \
-    fmin((a)->Y, (b)->Y) - EPSILONBIG <= (c)->Y && (c)->Y <= fmax((a)->Y, (b)->Y) + EPSILONBIG)
+   (MIN((a)->X, (b)->X) - EPSILONBIG <= (c)->X && (c)->X <= MAX((a)->X, (b)->X) + EPSILONBIG && \
+    MIN((a)->Y, (b)->Y) - EPSILONBIG <= (c)->Y && (c)->Y <= MAX((a)->Y, (b)->Y) + EPSILONBIG)
 
 #endif
 
@@ -254,7 +280,7 @@ __forceinline bool IntersectLineTriangle(const V3* P1, const V3* P2, const V3* P
 
    // calculate u parameter and test bound
    u = V3DOT(&t, &p) * inv_det;
-   if (u < 0.0f || u > 1.0f)
+   if ((u < 0.0f) | (u > 1.0f))
       return false;
 
    // prepare to test v parameter
@@ -262,14 +288,14 @@ __forceinline bool IntersectLineTriangle(const V3* P1, const V3* P2, const V3* P
 
    // calculate v parameter and test bound
    v = V3DOT(&d, &q) * inv_det;
-   if (v < 0.0f || u + v  > 1.0f)
+   if ((v < 0.0f) | (u + v > 1.0f))
       return false;
 
    f = V3DOT(&e2, &q) * inv_det;
 
    // note: we additionally check for < 1.0f
    // = LINE intersection, not ray
-   if (f >= 0.0f && f <= 1.0f)
+   if ((f >= 0.0f) & (f <= 1.0f))
       return true;
 
    return false;
@@ -283,7 +309,6 @@ __forceinline float MinSquaredDistanceToLineSegment(const V2* P, const V2* Q1, c
 
    // vectors
    V2SUB(&v1, P, Q1);   // from q1 to p
-   V2SUB(&v2, P, Q2);   // from q2 to p
    V2SUB(&v3, Q2, Q1);  // line vector
 
    // squared distance between Q1 and Q2
@@ -301,9 +326,12 @@ __forceinline float MinSquaredDistanceToLineSegment(const V2* P, const V2* Q1, c
       return V2LEN2(&v1);
 
    // Q2 is closest
-   else if (t > 1.0f)  
+   else if (t > 1.0f)
+   {
+      V2SUB(&v2, P, Q2);   // from q2 to p
       return V2LEN2(&v2);
-   
+   }
+
    // point on line is closest
    else
    {

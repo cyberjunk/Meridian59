@@ -51,9 +51,7 @@ void * ResizeMemory(int malloc_id,void *ptr,int old_size,int new_size);
 #define FreeMemory(m_id,ptr,size) FreeMemoryX(m_id,(void **) &ptr,size)
 
 /* these are for use with SIMD instructions, using aligned alloc */
-#if defined(SSE) || defined(SSE2) || defined(SSE3) || defined(SSE4)
 void * AllocateMemorySIMD(int malloc_id, int size);
 void FreeMemorySIMD(int malloc_id, void *ptr, int size);
-#endif
 
 #endif
