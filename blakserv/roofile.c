@@ -148,34 +148,6 @@ __forceinline void BSPUpdateLeafHeights(const room_type* Room, const SectorNode*
    }
 }
 
-bool BSPGetHeightTree(BspNode* Node, V2* P, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf)
-{
-   // note: we don't check for other nullptrs here because caller is doing it and we're recursive..
-   if (!Node)
-      return false;
-
-   // reached a leaf
-   if (Node->Type == BspLeafType && Node->u.leaf.Sector)
-   {
-      // set output params
-      *Leaf = &Node->u.leaf;
-      *HeightF = SECTORHEIGHTFLOOR(Node->u.leaf.Sector, P);
-      *HeightFWD = BSPGetSectorHeightFloorWithDepth(Node->u.leaf.Sector, P);
-      *HeightC = SECTORHEIGHTCEILING(Node->u.leaf.Sector, P);
-      return true;
-   }
-
-   // still internal node, climb down only one subtree
-   else if (Node->Type == BspInternalType)
-   {
-      return (DISTANCETOSPLITTERSIGNED(&Node->u.internal, P) >= 0.0f) ?
-         BSPGetHeightTree(Node->u.internal.RightChild, P, HeightF, HeightFWD, HeightC, Leaf) :
-         BSPGetHeightTree(Node->u.internal.LeftChild, P, HeightF, HeightFWD, HeightC, Leaf);
-   }
-
-   return false;
-}
-
 bool BSPLineOfSightTree(BspNode* Node, V3* S, V3* E)
 {
    if (!Node)
@@ -614,7 +586,41 @@ bool BSPGetHeight(room_type* Room, V2* P, float* HeightF, float* HeightFWD, floa
    if (!Room || Room->TreeNodesCount == 0 || !P || !HeightF || !HeightFWD || !HeightC)
       return false;
 
-   return BSPGetHeightTree(&Room->TreeNodes[0], P, HeightF, HeightFWD, HeightC, Leaf);
+   // start with root-node
+   BspNode* n = &Room->TreeNodes[0];
+
+   // traverse tree
+   while (n)
+   {
+      // still processing a splitter (tree-node)
+      if (n->Type == BspInternalType)
+      {
+         // see whether to climb down left or right sub-tree
+         const float dist = DISTANCETOSPLITTERSIGNED(&n->u.internal, P);
+
+         // pick child and loop again
+         n = (dist >= 0.0f) ? n->u.internal.RightChild : n->u.internal.LeftChild;
+      }
+      
+      // reached a subsector (tree-leaf)
+      else if (n->Type == BspLeafType && n->u.leaf.Sector)
+      {
+         // set output params
+         *Leaf = &n->u.leaf;
+         *HeightF = SECTORHEIGHTFLOOR(n->u.leaf.Sector, P);
+         *HeightFWD = BSPGetSectorHeightFloorWithDepth(n->u.leaf.Sector, P);
+         *HeightC = SECTORHEIGHTCEILING(n->u.leaf.Sector, P);
+         return true;
+      }
+
+      // unknown nodetype, wtf?
+      // need to prevent infin. loop here
+      else
+         return false;
+   }
+
+   // outside of any leaf
+   return false;
 }
 
 /*********************************************************************************************/
