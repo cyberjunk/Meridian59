@@ -122,16 +122,17 @@ __forceinline float V3LEN(const V3* a)
 
 ///////////////////////////////////////////////////////////////////////////
 
-#define V2ADD(a,b,c) V3ADD(a,b,c)
-#define V2SUB(a,b,c) V3SUB(a,b,c)
-#define V2SCALE(a,b) V3SCALE(a,b)
+#define V2ADD(a,b,c)  V3ADD(a,b,c)
+#define V2SUB(a,b,c)  V3SUB(a,b,c)
+#define V2SCALE(a,b)  V3SCALE(a,b)
 
-#define V2DOT(a,b) ((a)->X * (b)->X + (a)->Y * (b)->Y)
-#define V2LEN2(a)  V2DOT(a,a)
-#define V2LEN(a)   _mm_sqrt_ss(_mm_set1_ps(V2LEN2((a)))).m128_f32[0]
+#define V2DOT(a,b)    ((a)->X * (b)->X + (a)->Y * (b)->Y)
+#define V2LEN2(a)     V2DOT(a,a)
+#define V2LEN(a)      _mm_sqrt_ss(_mm_set1_ps(V2LEN2((a)))).m128_f32[0]
+#define V2ISZERO(a)   (ISZERO((a)->X) && ISZERO((a)->Y))
 
 #if defined(SSE4)
-#define V2ROUND(a)   V3ROUND(a)
+#define V2ROUND(a)    V3ROUND(a)
 #else
 #define V2ROUND(a)          \
    (a)->X = roundf((a)->X); \
@@ -204,9 +205,10 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
    (a)->X *= (b); \
    (a)->Y *= (b);
 
-#define V2DOT(a,b) ((a)->X * (b)->X + (a)->Y * (b)->Y)
-#define V2LEN2(a)  V2DOT(a,a)
-#define V2LEN(a)   sqrtf(V2LEN2((a)))
+#define V2DOT(a,b)    ((a)->X * (b)->X + (a)->Y * (b)->Y)
+#define V2LEN2(a)     V2DOT(a,a)
+#define V2LEN(a)      sqrtf(V2LEN2((a)))
+#define V2ISZERO(a)   (ISZERO((a)->X) && ISZERO((a)->Y))
 
 #define V2ROUND(a)          \
    (a)->X = roundf((a)->X); \
