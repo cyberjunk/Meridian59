@@ -1,14 +1,12 @@
 
-#include <windows.h>
-#include <stdio.h>
 #include <tchar.h>
+#include <blakserv.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <geometry.h>
-
-#define OUTLOOPCOUNT 16
-#define LOOPCOUNT 2048*2048
+#define OUTLOOPCOUNT  16
+#define LOOPCOUNT     2048*2048
+#define LOOPCOUNTBSP  2048*12
 
 static LARGE_INTEGER frequency;
 static LARGE_INTEGER start;
@@ -17,10 +15,31 @@ static double interval;
 static V3 values[LOOPCOUNT];
 static V3* allocvalues;
 static float dotproducts[LOOPCOUNT];
+static Wall* wall;
+static room_type roomTos;
 
 DECLSPEC_NOINLINE static const void UpdateInterval()
 {
 	interval = (double)(end.QuadPart - start.QuadPart) / (double)frequency.QuadPart;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+DECLSPEC_NOINLINE static const void LoadRooms()
+{
+	// load tos
+	if (!BSPLoadRoom("../../resource/rooms/tos.roo", &roomTos))
+		printf("Error loading file ../../resource/rooms/tos.roo\n");
+
+	// tos blockers
+	V2 bP1 = { 15000.0f, 15000.0f };
+	BSPBlockerAdd(&roomTos, 1, &bP1);
+	V2 bP2 = { 10000.0f, 15000.0f };
+	BSPBlockerAdd(&roomTos, 2, &bP2);
+	V2 bP3 = { 8000.0f, 4000.0f };
+	BSPBlockerAdd(&roomTos, 3, &bP3);
+	V2 bP4 = { 25000.0f, 25000.0f };
+	BSPBlockerAdd(&roomTos, 4, &bP4);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,7 +266,6 @@ DECLSPEC_NOINLINE static const void TestV3Round()
 	printf("V3ROUND      Time: %f\n", interval);
 }
 
-
 DECLSPEC_NOINLINE static const void TestV3IsZero()
 {
 	QueryPerformanceCounter(&start);
@@ -341,6 +359,19 @@ DECLSPEC_NOINLINE static const void TestV2Round()
 	printf("V2ROUND      Time: %f\n", interval);
 }
 
+DECLSPEC_NOINLINE static const void TestV2IsZero()
+{
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNT; i++)
+	{
+		*(int*)&dotproducts = V2ISZERO(&values[i - 6]);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("V2ISZERO     Time: %f\n", interval);
+}
+
 DECLSPEC_NOINLINE static const void TestV2IsInBox()
 {
 	QueryPerformanceCounter(&start);
@@ -353,6 +384,7 @@ DECLSPEC_NOINLINE static const void TestV2IsInBox()
 	UpdateInterval();
 	printf("V2ISINBOX    Time: %f\n", interval);
 }
+
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 DECLSPEC_NOINLINE static const void TestIntersectLineTriangle()
@@ -393,6 +425,102 @@ DECLSPEC_NOINLINE static const void TestIntersectLineCircle()
 	UpdateInterval();
 	printf("INT-LIN-CIRC Time: %f\n", interval);
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+//                              BSP Benchmarks
+/////////////////////////////////////////////////////////////////////////////////////////////
+DECLSPEC_NOINLINE static const void TestBSPCanMoveInRoom()
+{
+	V2 s = { 16384.0f, 16384.0f };
+	V2 e = { 16384.0f, 32768.0f };
+	bool can;
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNTBSP; i++)
+	{
+		can = BSPCanMoveInRoom(&roomTos, &s, &e, 0, false, &wall);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("BSPCANMOVTOS Time: %f  CAN=%i\n", interval, can);
+}
+
+DECLSPEC_NOINLINE static const void TestBSPGetHeight()
+{
+	V3 s = { 16384.0f, 16384.0f, 0.0f };
+	bool ins;
+	float tmp;
+	BspLeaf* leaf;
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNTBSP; i++)
+	{
+		ins = BSPGetHeight(&roomTos, (V2*)&s, &tmp, &s.Z, &tmp, &leaf);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("BSPGETHEIGHT Time: %f  INS=%i S.Z=%f\n", interval, ins, s.Z);
+}
+
+DECLSPEC_NOINLINE static const void TestBSPLineOfSight1()
+{
+	V3 s = { 16384.0f, 16384.0f, 0.0f };
+	V3 e = { 16384.0f, 32768.0f, 0.0f };
+	float tmp;
+	BspLeaf* leaf;
+	bool ins, ine, los;
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNTBSP; i++)
+	{
+		ins = BSPGetHeight(&roomTos, (V2*)&s, &tmp, &s.Z, &tmp, &leaf);
+		ine = BSPGetHeight(&roomTos, (V2*)&e, &tmp, &e.Z, &tmp, &leaf);
+		los = BSPLineOfSight(&roomTos, &s, &e);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("BSPLOSTOS1   Time: %f  LOS=%i INS=%i INE=%i S.Z=%.2f E.Z=%.2f\n", interval, ins, ine, los, s.Z, e.Z);
+}
+
+DECLSPEC_NOINLINE static const void TestBSPLineOfSight2()
+{
+	V3 s = { 16384.0f, 16384.0f, 2623.0f };
+	V3 e = { 24000.0f, 32768.0f, 3746.0f };
+	float tmp;
+	BspLeaf* leaf;
+	bool ins, ine, los;
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNTBSP; i++)
+	{
+		ins = BSPGetHeight(&roomTos, (V2*)&s, &tmp, &s.Z, &tmp, &leaf);
+		ine = BSPGetHeight(&roomTos, (V2*)&e, &tmp, &e.Z, &tmp, &leaf);
+		los = BSPLineOfSight(&roomTos, &s, &e);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("BSPLOSTOS2   Time: %f  LOS=%i INS=%i INE=%i S.Z=%.2f E.Z=%.2f\n", interval, los, ins, ine, s.Z, e.Z);
+}
+
+DECLSPEC_NOINLINE static const void TestBSPLineOfSight3()
+{
+	V3 s = { 24000.0f, 32768.0f, 3746.0f };
+	V3 e = { 16384.0f, 16384.0f, 2623.0f };
+	float tmp;
+	BspLeaf* leaf;
+	bool ins, ine, los;
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNTBSP; i++)
+	{
+		ins = BSPGetHeight(&roomTos, (V2*)&s, &tmp, &s.Z, &tmp, &leaf);
+		ine = BSPGetHeight(&roomTos, (V2*)&e, &tmp, &e.Z, &tmp, &leaf);
+		los = BSPLineOfSight(&roomTos, &s, &e);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("BSPLOSTOS3   Time: %f  LOS=%i INS=%i INE=%i S.Z=%.2f E.Z=%.2f\n", interval, los, ins, ine, s.Z, e.Z);
+}
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -402,15 +530,17 @@ int _tmain(int argc, _TCHAR* argv[])
 	printf(str);
 
 	allocvalues = (V3*)_aligned_malloc(LOOPCOUNT * sizeof(V3), 16);
-
+	
 	QueryPerformanceFrequency(&frequency);
-
+	LoadRooms();
+	
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 	
 	while (1)
 	{
 		system("cls");
+
 		////////////////////////////////////////////////////////////////////////////////////
 		GenerateRandoms();
 		TestLoopEmpty();
@@ -461,6 +591,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		GenerateRandoms();
 		TestV2Round();
 		GenerateRandoms();
+		TestV2IsZero();
+		GenerateRandoms();
 		TestV2IsInBox();
 		////////////////////////////////////////////////////////////////////////////////////
 		printf("---------------------------------------------\n");
@@ -470,6 +602,18 @@ int _tmain(int argc, _TCHAR* argv[])
 		TestIntersectLineCircle();
 		GenerateRandoms();
 		TestMinSquaredDistanceToLineSegment();
+		////////////////////////////////////////////////////////////////////////////////////
+		printf("---------------------------------------------\n");
+		GenerateRandoms();
+		TestBSPCanMoveInRoom();
+		GenerateRandoms();
+		TestBSPGetHeight();
+		GenerateRandoms();
+		TestBSPLineOfSight1();
+		GenerateRandoms();
+		TestBSPLineOfSight2();
+		GenerateRandoms();
+		TestBSPLineOfSight3();
 		////////////////////////////////////////////////////////////////////////////////////
 		printf("---------------------------------------------\n");
 		printf("          PRESS KEY TO RESTART \n");
