@@ -583,7 +583,9 @@ bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E, Wall** BlockWall)
 /*********************************************************************************************/
 bool BSPGetHeight(room_type* Room, V2* P, float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf)
 {
-   if (!Room || Room->TreeNodesCount == 0 || !P || !HeightF || !HeightFWD || !HeightC)
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | (Room->TreeNodesCount == 0) | !P | !HeightF | !HeightFWD | !HeightC)
       return false;
 
    // start with root-node
@@ -674,7 +676,9 @@ bool BSPLineOfSightView(V2 *S, V2 *E, int kod_angle)
 /*********************************************************************************************/
 bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 {
-   if (!Room || Room->TreeNodesCount == 0 || !S || !E)
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | (Room->TreeNodesCount == 0) | !S | !E)
       return false;
 
    // test center
@@ -726,7 +730,9 @@ bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 /*********************************************************************************************/
 bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOutsideBSP, Wall** BlockWall)
 {
-   if (!Room || Room->TreeNodesCount == 0 || !S || !E)
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | (Room->TreeNodesCount == 0) | !S | !E)
       return false;
 
    // allow move to same location
@@ -882,7 +888,9 @@ void BSPMoveSector(room_type* Room, unsigned int ServerID, bool Floor, float Hei
 bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigned int* ReturnFlags,
                         float* HeightF, float* HeightFWD, float* HeightC, BspLeaf** Leaf)
 {
-   if (!Room || !P || !ReturnFlags)
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | !P | !ReturnFlags)
       return false;
 
    // see what to query
@@ -958,7 +966,9 @@ bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigne
 /*********************************************************************************************/
 bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
 {
-	if (!Room || !P)
+	// sanity check: these are binary or operations because it's very unlikely
+	// any condition is met. So next ones can't be skipped, so binary is faster.
+	if (!Room | !P)
 		return false;
 
 	float heightF, heightFWD, heightC;
@@ -1020,7 +1030,9 @@ bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
 /*********************************************************************************************/
 bool BSPGetStepTowards(room_type* Room, V2* S, V2* E, V2* P, unsigned int* Flags, int ObjectID)
 {
-   if (!Room || !S || !E || !P || !Flags)
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | !S | !E | !P | !Flags)
       return false;
 
    // Monsters that can move through walls or outside the tree will
@@ -1356,7 +1368,9 @@ bool BSPBlockerRemove(room_type* Room, int ObjectID)
 /*********************************************************************************************/
 bool BSPBlockerAdd(room_type* Room, int ObjectID, V2* P)
 {
-   if (!Room || !P)
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | !P)
       return false;
 
    // alloc
@@ -1388,7 +1402,9 @@ bool BSPBlockerAdd(room_type* Room, int ObjectID, V2* P)
 /*********************************************************************************************/
 bool BSPBlockerMove(room_type* Room, int ObjectID, V2* P)
 {
-   if (!Room || !P)
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | !P)
       return false;
 
    BlockerNode* blocker = Room->Blocker;
