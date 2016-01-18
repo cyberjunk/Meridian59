@@ -148,6 +148,34 @@ __forceinline void BSPUpdateLeafHeights(const room_type* Room, const SectorNode*
    }
 }
 
+__forceinline bool BSPIntersectLineSplitter(const BspNode* Node, const V2* S, const V2* E, V2* P)
+{
+   // get 2d line equation coefficients for infinite line through S and E
+   double a1, b1, c1;
+   a1 = E->Y - S->Y;
+   b1 = S->X - E->X;
+   c1 = a1 * S->X + b1 * S->Y;
+
+   // get 2d line equation coefficients of splitter
+   double a2, b2, c2;
+   a2 = -Node->u.internal.A;
+   b2 = -Node->u.internal.B;
+   c2 = Node->u.internal.C;
+
+   const double det = a1*b2 - a2*b1;
+
+   // if zero, they're parallel and never intersect
+   if (ISZERO(det))
+      return false;
+
+   // intersection point of infinite lines
+   P->X = (float)((b2*c1 - b1*c2) / det);
+   P->Y = (float)((a1*c2 - a2*c1) / det);
+
+   // must be in boundingbox of finite SE
+   return ISINBOX(S, E, P);
+}
+
 bool BSPLineOfSightTree(BspNode* Node, V3* S, V3* E)
 {
    if (!Node)
@@ -430,79 +458,59 @@ bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E, Wall** BlockWall)
       // This case handles long movelines where S and E can be far away from each other and
       // just checking the distance of E to the line would fail.
       // q contains the intersection point
-      if ((distS > 0.0f && distE < 0.0f) ||
-          (distS < 0.0f && distE > 0.0f))
+      if (((distS > 0.0f) && (distE < 0.0f)) ||
+          ((distS < 0.0f) && (distE > 0.0f)))
       {
-         // get 2d line equation coefficients for infinite line through S and E
-         double a1, b1, c1;
-         a1 = E->Y - S->Y;
-         b1 = S->X - E->X;
-         c1 = a1 * S->X + b1 * S->Y;
-
-         // get 2d line equation coefficients of splitter
-         double a2, b2, c2;
-         a2 = -Node->u.internal.A;
-         b2 = -Node->u.internal.B;
-         c2 = Node->u.internal.C;
-
-         double det = a1*b2 - a2*b1;
-
-         // shouldn't be zero at all, because distS and distE have different sign
-         if (!ISZERO(det))
+         // intersect finite move-line SE with infinite splitter line
+		 // q stores possible intersection point
+         V2 q;
+		 if (BSPIntersectLineSplitter(Node, S, E, &q))
          {
-            // intersection point of infinite lines
-            V2 q;
-            q.X = (float)((b2*c1 - b1*c2) / det);
-            q.Y = (float)((a1*c2 - a2*c1) / det);
-
-            // must be in boundingbox of SE
-            if (ISINBOX(S, E, &q))
+            // iterate finite segments (walls) in this splitter
+            Wall* wall = Node->u.internal.FirstWall;
+            while (wall)
             {
-               // iterate finite segments (walls) in this splitter
-               Wall* wall = Node->u.internal.FirstWall;
-               while (wall)
+               // infinite intersection point must also be in bbox of wall
+               // otherwise no intersect
+               if (!ISINBOX(&wall->P1, &wall->P2, &q))
                {
-                  // infinite intersection point must also be in bbox of wall
-                  // otherwise no intersect
-                  if (!ISINBOX(&wall->P1, &wall->P2, &q))
-                  {
-                     wall = wall->NextWallInPlane;
-                     continue;
-                  }
-
-                  // set from and to sector / side
-                  if (distS > 0.0f)
-                  {
-                     sideS = wall->RightSide;
-                     sectorS = wall->RightSector;
-                  }
-                  else
-                  {
-                     sideS = wall->LeftSide;
-                     sectorS = wall->LeftSector;
-                  }
-
-                  if (distE > 0.0f)
-                  {
-                     sideE = wall->RightSide;
-                     sectorE = wall->RightSector;
-                  }
-                  else
-                  {
-                     sideE = wall->LeftSide;
-                     sectorE = wall->LeftSector;
-                  }
-
-                  // check the transition data for this wall, use intersection point q
-                  if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
-                  {
-                     *BlockWall = wall;
-                     return false;
-                  }
                   wall = wall->NextWallInPlane;
+                  continue;
                }
-            }		 
-         }
+
+               // set from and to sector / side
+               if (distS > 0.0f)
+               {
+                  sideS = wall->RightSide;
+                  sectorS = wall->RightSector;
+               }
+               else
+               {
+                  sideS = wall->LeftSide;
+                  sectorS = wall->LeftSector;
+               }
+
+               if (distE > 0.0f)
+               {
+                  sideE = wall->RightSide;
+                  sectorE = wall->RightSector;
+               }
+               else
+               {
+                  sideE = wall->LeftSide;
+                  sectorE = wall->LeftSector;
+               }
+
+               // check the transition data for this wall, use intersection point q
+               if (!BSPCanMoveInRoomTreeInternal(sectorS, sectorE, sideS, sideE, &q))
+               {
+                  *BlockWall = wall;
+                  return false;
+               }
+
+               wall = wall->NextWallInPlane;
+            }
+         }		          
       }
 
       // CASE 2) The move line does not cross the infinite splitter, both move endpoints are on the same side.
@@ -550,6 +558,7 @@ bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E, Wall** BlockWall)
                   *BlockWall = wall;
                   return false;
                }
+
                wall = wall->NextWallInPlane;
             }
          }
