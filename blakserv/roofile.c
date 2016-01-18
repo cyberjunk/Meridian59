@@ -585,7 +585,7 @@ bool BSPGetHeight(room_type* Room, V2* P, float* HeightF, float* HeightFWD, floa
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
-   if ((!Room || Room->TreeNodesCount == 0) | !P | !HeightF | !HeightFWD | !HeightC)
+   if (!Room || ((Room->TreeNodesCount == 0) | !P | !HeightF | !HeightFWD | !HeightC))
       return false;
 
    // start with root-node
@@ -678,7 +678,7 @@ bool BSPLineOfSight(room_type* Room, V3* S, V3* E)
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
-   if ((!Room || Room->TreeNodesCount == 0) | !S | !E)
+   if (!Room || ((Room->TreeNodesCount == 0) | !S | !E))
       return false;
 
    // test center
@@ -732,7 +732,7 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
 {
    // sanity check: these are binary or operations because it's very unlikely
    // any condition is met. So next ones can't be skipped, so binary is faster.
-   if ((!Room || Room->TreeNodesCount == 0) | !S | !E)
+   if (!Room || ((Room->TreeNodesCount == 0) | !S | !E))
       return false;
 
    // allow move to same location
