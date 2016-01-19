@@ -6,7 +6,7 @@
 
 #define OUTLOOPCOUNT  16
 #define LOOPCOUNT     2048*2048
-#define LOOPCOUNTBSP  2048*12
+#define LOOPCOUNTBSP  2048*16
 
 static LARGE_INTEGER frequency;
 static LARGE_INTEGER start;
@@ -60,6 +60,7 @@ DECLSPEC_NOINLINE static const void GenerateRandoms()
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+#pragma region BaseTests
 DECLSPEC_NOINLINE static const void TestLoopEmpty()
 {
 	QueryPerformanceCounter(&start);
@@ -159,9 +160,11 @@ DECLSPEC_NOINLINE static const void TestMOVSSTo()
 	UpdateInterval();
 	printf("MOVSS TO     Time: %f\n", interval);
 }
+#pragma endregion
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+#pragma region V3
 DECLSPEC_NOINLINE static const void TestV3Add()
 {
 	QueryPerformanceCounter(&start);
@@ -278,9 +281,11 @@ DECLSPEC_NOINLINE static const void TestV3IsZero()
 	UpdateInterval();
 	printf("V3ISZERO     Time: %f\n", interval);
 }
+#pragma endregion
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
+#pragma region V2
 DECLSPEC_NOINLINE static const void TestV2Add()
 {
 	QueryPerformanceCounter(&start);
@@ -384,6 +389,7 @@ DECLSPEC_NOINLINE static const void TestV2IsInBox()
 	UpdateInterval();
 	printf("V2ISINBOX    Time: %f\n", interval);
 }
+#pragma endregion
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -464,8 +470,8 @@ DECLSPEC_NOINLINE static const void TestBSPGetHeight()
 
 DECLSPEC_NOINLINE static const void TestBSPLineOfSight1()
 {
-	V3 s = { 16384.0f, 16384.0f, 0.0f };
-	V3 e = { 16384.0f, 32768.0f, 0.0f };
+	V3 s = { 21000.0f, 13832.0f, 0.0f }; // duke door
+	V3 e = { 21000.0f, 63144.0f, 0.0f }; // close to fence at fountain
 	float tmp;
 	BspLeaf* leaf;
 	bool ins, ine, los;
@@ -479,7 +485,7 @@ DECLSPEC_NOINLINE static const void TestBSPLineOfSight1()
 	}
 	QueryPerformanceCounter(&end);
 	UpdateInterval();
-	printf("BSPLOSTOS1   Time: %f  LOS=%i INS=%i INE=%i S.Z=%.2f E.Z=%.2f\n", interval, ins, ine, los, s.Z, e.Z);
+	printf("BSPLOSTOS1   Time: %f  LOS=%i INS=%i INE=%i S.Z=%.2f E.Z=%.2f\n", interval, los, ins, ine, s.Z, e.Z);
 }
 
 DECLSPEC_NOINLINE static const void TestBSPLineOfSight2()
@@ -521,13 +527,32 @@ DECLSPEC_NOINLINE static const void TestBSPLineOfSight3()
 	UpdateInterval();
 	printf("BSPLOSTOS3   Time: %f  LOS=%i INS=%i INE=%i S.Z=%.2f E.Z=%.2f\n", interval, los, ins, ine, s.Z, e.Z);
 }
+
+DECLSPEC_NOINLINE static const void TestBSPGetStepTowards()
+{
+	V2 s = { 16384.0f, 16384.0f };
+	V2 e = { 16384.0f, 32768.0f };
+	V2 p;
+	unsigned int flags;
+	bool can;
+	QueryPerformanceCounter(&start);
+	for (size_t j = 0; j < OUTLOOPCOUNT; j++)
+	for (size_t i = 7; i < LOOPCOUNTBSP; i++)
+	{
+		can = BSPGetStepTowards(&roomTos, &s, &e, &p, &flags, 0);
+	}
+	QueryPerformanceCounter(&end);
+	UpdateInterval();
+	printf("BSPGETSTEP   Time: %f  CAN=%i\n", interval, can);
+}
 /////////////////////////////////////////////////////////////////////////////////////////////
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	char str[64];
-	sprintf_s(str, "LOOPS: %i\n", OUTLOOPCOUNT*LOOPCOUNT);
-	printf(str);
+	char strLoopsBase[64];
+	char strLoopsBsp[64];
+	sprintf_s(strLoopsBase, " GEOMETRY BENCHMARK    LOOPS: %i\n", OUTLOOPCOUNT*LOOPCOUNT);
+	sprintf_s(strLoopsBsp,  " ROOFILE BENCHMARK     LOOPS: %i\n", OUTLOOPCOUNT*LOOPCOUNTBSP);
 
 	allocvalues = (V3*)_aligned_malloc(LOOPCOUNT * sizeof(V3), 16);
 	
@@ -540,11 +565,14 @@ int _tmain(int argc, _TCHAR* argv[])
 	while (1)
 	{
 		system("cls");
-
+		
+		////////////////////////////////////////////////////////////////////////////////////
+		printf(strLoopsBase);
+		printf("---------------------------------------------\n");
 		////////////////////////////////////////////////////////////////////////////////////
 		GenerateRandoms();
 		TestLoopEmpty();
-		GenerateRandoms();
+		/*GenerateRandoms();
 		TestMOVAPSFrom();
 		GenerateRandoms();
 		TestMOVAPSTo();
@@ -555,9 +583,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		GenerateRandoms();
 		TestMOVSSFrom();
 		GenerateRandoms();
-		TestMOVSSTo();
+		TestMOVSSTo();*/
 		////////////////////////////////////////////////////////////////////////////////////
-		printf("---------------------------------------------\n");
 		GenerateRandoms();
 		TestV3Add();
 		GenerateRandoms();
@@ -577,7 +604,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		GenerateRandoms();
 		TestV3IsZero();
 		////////////////////////////////////////////////////////////////////////////////////
-		printf("---------------------------------------------\n");
 		GenerateRandoms();
 		TestV2Add();
 		GenerateRandoms();
@@ -595,7 +621,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		GenerateRandoms();
 		TestV2IsInBox();
 		////////////////////////////////////////////////////////////////////////////////////
-		printf("---------------------------------------------\n");
 		GenerateRandoms();
 		TestIntersectLineTriangle();
 		GenerateRandoms();
@@ -604,6 +629,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		TestMinSquaredDistanceToLineSegment();
 		////////////////////////////////////////////////////////////////////////////////////
 		printf("---------------------------------------------\n");
+		printf(strLoopsBsp);
+		printf("---------------------------------------------\n");
+		////////////////////////////////////////////////////////////////////////////////////	
 		GenerateRandoms();
 		TestBSPCanMoveInRoom();
 		GenerateRandoms();
@@ -614,6 +642,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		TestBSPLineOfSight2();
 		GenerateRandoms();
 		TestBSPLineOfSight3();
+		GenerateRandoms();
+		TestBSPGetStepTowards();
 		////////////////////////////////////////////////////////////////////////////////////
 		printf("---------------------------------------------\n");
 		printf("          PRESS KEY TO RESTART \n");
