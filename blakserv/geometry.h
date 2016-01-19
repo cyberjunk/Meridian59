@@ -20,7 +20,7 @@
 //                                                           VECTOR TYPE
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(SSE2) || defined(SSE3) || defined(SSE4)
+#if defined(SSE2) || defined(SSE4)
 // The basic 4D vector used for vector calculations.
 // Must be aligned to 16 bytes and allocated on the heap by using _aligned_alloc instead of malloc
 // Union provides easy access for different use-cases, including SIMD instructions by 'SSE'
@@ -43,7 +43,7 @@ typedef struct V2 { float X, Y; } V2;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                         SSE VECTOR OPERATIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if defined(SSE2) || defined(SSE3) || defined(SSE4)
+#if defined(SSE2) || defined(SSE4)
 #define V3ADD(a,b,c)    (a)->SSE = _mm_add_ps((b)->SSE, (c)->SSE);         // a = b + c
 #define V3SUB(a,b,c)    (a)->SSE = _mm_sub_ps((b)->SSE, (c)->SSE);         // a = b - c
 #define V3SCALE(a,b)    (a)->SSE = _mm_mul_ps((a)->SSE, _mm_set1_ps(b));   // a = a * b  (b is float)
@@ -72,19 +72,6 @@ __forceinline int V3ISZERO(const V3* a)
 #define V3LEN(a)        _mm_sqrt_ps(_mm_dp_ps((a)->SSE, (a)->SSE, 127)).m128_f32[0]
 #define V3ROUND(a)      (a)->SSE = _mm_round_ps((a)->SSE, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
 #else
-
-#if defined(SSE3)
-__forceinline void V3DOT3(V3* a, const V3* b, const V3* c)
-{
-   const __m128  mult = _mm_mul_ps(b->SSE, c->SSE);
-   const __m128i mski = _mm_set_epi32(0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
-   const __m128  mskf = _mm_castsi128_ps(mski);
-   const __m128  and  = _mm_and_ps(mult, mskf);
-   const __m128  add1 = _mm_hadd_ps(and, and);    // [SSE3]
-   const __m128  add2 = _mm_hadd_ps(add1, add1);  // [SSE3]
-   a->SSE = add2;
-}
-#else
 __forceinline void V3DOT3(V3* a, const V3* b, const V3* c)
 {
    const __m128  mult = _mm_mul_ps(b->SSE, c->SSE);
@@ -95,7 +82,6 @@ __forceinline void V3DOT3(V3* a, const V3* b, const V3* c)
    const __m128  add2 = _mm_add_ps(add1, _mm_shuffle_ps(add1, add1, _MM_SHUFFLE(0, 1, 2, 3)));
    a->SSE = add2;
 }
-#endif
 
 __forceinline float V3DOT(const V3* a, const V3* b)
 {
@@ -159,7 +145,7 @@ __forceinline bool ISINBOX(const V2* a, const V2* b, const V2* c)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                        NO-SSE VECTOR OPERATIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if !(defined(SSE2) || defined(SSE3) || defined(SSE4))
+#if !(defined(SSE2) || defined(SSE4))
 #define V3ADD(a,b,c) \
    (a)->X = (b)->X + (c)->X; \
    (a)->Y = (b)->Y + (c)->Y; \
@@ -383,7 +369,7 @@ __forceinline bool IntersectLineCircle(const V2* M, const float Radius, const V2
    if (discriminant < 0.0f || ISZERO(div))
       return false;
 
-#if !(defined(SSE2) || defined(SSE3) || defined(SSE4))
+#if !(defined(SSE2) || defined(SSE4))
    const float sqrt = sqrtf(discriminant);
    const float t1 = (-b - sqrt) / div;
    const float t2 = (-b + sqrt) / div;

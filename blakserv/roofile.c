@@ -1564,7 +1564,7 @@ bool BSPLoadRoom(char *fname, room_type *room)
             node->u.leaf.PointsCeiling[j].X = node->u.leaf.PointsFloor[j].X;
             node->u.leaf.PointsCeiling[j].Y = node->u.leaf.PointsFloor[j].Y;
             node->u.leaf.PointsCeiling[j].Z = node->u.leaf.PointsFloor[j].Z = 0.0f;
-#if defined(SSE2) || defined(SSE3) || defined(SSE4)
+#if defined(SSE2) || defined(SSE4)
             node->u.leaf.PointsCeiling[j].W = node->u.leaf.PointsFloor[j].W = 0.0f;
 #endif
          }

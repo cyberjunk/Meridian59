@@ -439,7 +439,7 @@ void * ResizeMemory(int malloc_id,void *ptr,int old_size,int new_size)
 
 void * AllocateMemorySIMD(int malloc_id, int size)
 {
-#if defined(SSE2) || defined(SSE3) || defined(SSE4)
+#if defined(SSE2) || defined(SSE4)
    void *ptr;
 
    if (size == 0)
@@ -470,7 +470,7 @@ void * AllocateMemorySIMD(int malloc_id, int size)
 
 void FreeMemorySIMD(int malloc_id, void *ptr, int size)
 {
-#if defined(SSE2) || defined(SSE3) || defined(SSE4)
+#if defined(SSE2) || defined(SSE4)
    if (malloc_id < 0 || malloc_id >= MALLOC_ID_NUM)
       eprintf("FreeMemorySIMD freeing memory of unknown type %i\n", malloc_id);
    else
