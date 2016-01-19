@@ -954,62 +954,62 @@ bool BSPGetLocationInfo(room_type* Room, V2* P, unsigned int QueryFlags, unsigne
 /*********************************************************************************************/
 bool BSPGetRandomPoint(room_type* Room, int MaxAttempts, V2* P)
 {
-	// sanity check: these are binary or operations because it's very unlikely
-	// any condition is met. So next ones can't be skipped, so binary is faster.
-	if (!Room | !P)
-		return false;
+   // sanity check: these are binary or operations because it's very unlikely
+   // any condition is met. So next ones can't be skipped, so binary is faster.
+   if (!Room | !P)
+      return false;
 
-	float heightF, heightFWD, heightC;
-	BspLeaf* leaf = NULL;
+   float heightF, heightFWD, heightC;
+   BspLeaf* leaf = NULL;
 
-	for (int i = 0; i < MaxAttempts; i++)
-	{
-		// generate random coordinates inside the things box
-		// we first map the random value to [0.0f , 1.0f] and then to [0.0f , BBOXMAX]
-		// note: the minimum of thingsbox is always at 0/0
-		P->X = ((float)rand() / (float)RAND_MAX) * Room->ThingsBox.Max.X;
-		P->Y = ((float)rand() / (float)RAND_MAX) * Room->ThingsBox.Max.Y;
+   for (int i = 0; i < MaxAttempts; i++)
+   {
+      // generate random coordinates inside the things box
+      // we first map the random value to [0.0f , 1.0f] and then to [0.0f , BBOXMAX]
+      // note: the minimum of thingsbox is always at 0/0
+      P->X = ((float)rand() / (float)RAND_MAX) * Room->ThingsBox.Max.X;
+      P->Y = ((float)rand() / (float)RAND_MAX) * Room->ThingsBox.Max.Y;
 
-		// make sure point is exactly expressable in KOD fineness units also
-		V2ROUNDROOTOKODFINENESS(P);
+      // make sure point is exactly expressable in KOD fineness units also
+      V2ROUNDROOTOKODFINENESS(P);
 
-		// 1. check for inside valid sector, otherwise roll again
-		// note: locations quite close to a wall pass this check!
-		if (!BSPGetHeight(Room, P, &heightF, &heightFWD, &heightC, &leaf))
-			continue;
+      // 1. check for inside valid sector, otherwise roll again
+      // note: locations quite close to a wall pass this check!
+      if (!BSPGetHeight(Room, P, &heightF, &heightFWD, &heightC, &leaf))
+         continue;
 		
-		// 2. must also have floor texture set
-		if (leaf && leaf->Sector->FloorTexture == 0)
-			continue;
+      // 2. must also have floor texture set
+      if (leaf && leaf->Sector->FloorTexture == 0)
+         continue;
 
-		// 3. check for being too close to a blocker
-		BlockerNode* blocker = Room->Blocker;
-		bool collision = false;
-		while (blocker)
-		{
-			V2 b;
-			V2SUB(&b, P, &blocker->Position);
+      // 3. check for being too close to a blocker
+      BlockerNode* blocker = Room->Blocker;
+      bool collision = false;
+      while (blocker)
+      {
+         V2 b;
+         V2SUB(&b, P, &blocker->Position);
 
-			// too close
-			if (V2LEN2(&b) < OBJMINDISTANCE2)
-			{
-				collision = true;
-				break;
-			}
+         // too close
+         if (V2LEN2(&b) < OBJMINDISTANCE2)
+         {
+            collision = true;
+            break;
+         }
 
-			blocker = blocker->Next;
-		}
+         blocker = blocker->Next;
+      }
 
-		// too close to a blocker, roll again
-		if (collision)
-			continue;
+      // too close to a blocker, roll again
+      if (collision)
+         continue;
 
-		// all good with P
-		return true;
-	}
+      // all good with P
+      return true;
+   }
 
-	// max attempts reached without success
-	return false;
+   // max attempts reached without success
+   return false;
 }
 
 /*********************************************************************************************/
