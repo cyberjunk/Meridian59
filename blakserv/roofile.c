@@ -176,7 +176,7 @@ __forceinline bool BSPIntersectLineSplitter(const BspNode* Node, const V2* S, co
    return ISINBOX(S, E, P);
 }
 
-bool BSPLineOfSightTree(BspNode* Node, V3* S, V3* E)
+bool BSPLineOfSightTree(const BspNode* Node, const V3* S, const V3* E)
 {
    if (!Node)
       return true;
@@ -246,8 +246,8 @@ bool BSPLineOfSightTree(BspNode* Node, V3* S, V3* E)
       return true;
 
    // get signed distances to both endpoints of ray
-   float distS = DISTANCETOSPLITTERSIGNED(&Node->u.internal, S);
-   float distE = DISTANCETOSPLITTERSIGNED(&Node->u.internal, E);
+   const float distS = DISTANCETOSPLITTERSIGNED(&Node->u.internal, S);
+   const float distE = DISTANCETOSPLITTERSIGNED(&Node->u.internal, E);
 
    /****************************************************************/
 
@@ -400,7 +400,7 @@ bool BSPLineOfSightTree(BspNode* Node, V3* S, V3* E)
    }
 }
 
-bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E, Wall** BlockWall)
+bool BSPCanMoveInRoomTree(const BspNode* Node, const V2* S, const V2* E, Wall** BlockWall)
 {
    // reached a leaf or nullchild, movements not blocked by leafs
    if (!Node || Node->Type != BspInternalType)
@@ -409,8 +409,8 @@ bool BSPCanMoveInRoomTree(BspNode* Node, V2* S, V2* E, Wall** BlockWall)
    /****************************************************************/
 
    // get signed distances from splitter to both endpoints of move
-   float distS = DISTANCETOSPLITTERSIGNED(&Node->u.internal, S);
-   float distE = DISTANCETOSPLITTERSIGNED(&Node->u.internal, E);
+   const float distS = DISTANCETOSPLITTERSIGNED(&Node->u.internal, S);
+   const float distE = DISTANCETOSPLITTERSIGNED(&Node->u.internal, E);
 
    /****************************************************************/
 
