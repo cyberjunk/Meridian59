@@ -45,6 +45,7 @@
 #define LOSEXTEND             64.0f
 #define MAXTREEDEPTH          8192
 
+
 // Calculation to convert KOD angles to radians.
 #define KODANGLETORADIANS(x) ((float)((x) % (int)MAX_KOD_DEGREE) * PI_MULT_2 / MAX_KOD_DEGREE)
 

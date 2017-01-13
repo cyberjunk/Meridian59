@@ -916,7 +916,6 @@ bool BSPCanMoveInRoom(room_type* Room, V2* S, V2* E, int ObjectID, bool moveOuts
    }
 
    // first check against room geometry
-   //bool roomok = (moveOutsideBSP || BSPCanMoveInRoomTree(&Room->TreeNodes[0], S, E, BlockWall));
    bool roomok = (moveOutsideBSP || BSPCanMoveInRoomWhile(Room, S, E, BlockWall));
 
    // already found a collision in room
